@@ -186,13 +186,18 @@ export function ProductSaleCard({
           <Input
             type="number"
             inputMode="numeric"
-            min="0"
+            min="1"
             value={quantity || ""}
             onChange={(e) => {
-              const val = parseInt(e.target.value) || 0
-              setQuantity(val >= 0 ? val : 0)
+              const val = e.target.value === "" ? 0 : parseInt(e.target.value) || 0
+              setQuantity(val)
             }}
-            placeholder="1"
+            onBlur={() => {
+              if (quantity <= 0) {
+                setQuantity(1)
+              }
+            }}
+            placeholder="0"
           />
         </div>
 

@@ -159,13 +159,13 @@ export function QuickAddStockModal({
             <Input
               type="number"
               inputMode="numeric"
-              min="0"
-              value={quantity || ""}
+              min="1"
+              value={quantity}
               onChange={(e) => {
                 const val = parseInt(e.target.value) || 0
-                setQuantity(val >= 0 ? val : 0)
+                setQuantity(val > 0 ? val : 1)
               }}
-              placeholder="1"
+              placeholder="0"
             />
           </div>
 

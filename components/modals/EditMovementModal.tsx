@@ -293,9 +293,21 @@ export function EditMovementModal({ movement, companyId, warehouses, onSuccess, 
                   <Input
                     type="number"
                     inputMode="numeric"
-                    min="0"
-                    {...purchaseForm.register("quantity", { valueAsNumber: true })}
-                    placeholder="1"
+                    min="1"
+                    value={purchaseForm.watch("quantity") ?? ""}
+                    onChange={(e) => {
+                      const val = e.target.value === "" ? undefined : Number(e.target.value)
+                      purchaseForm.setValue("quantity", val as any, { shouldValidate: false })
+                    }}
+                    onBlur={() => {
+                      const currentValue = purchaseForm.watch("quantity")
+                      if (!currentValue || currentValue < 1) {
+                        purchaseForm.setValue("quantity", 1 as any, { shouldValidate: true })
+                      } else {
+                        purchaseForm.setValue("quantity", currentValue, { shouldValidate: true })
+                      }
+                    }}
+                    placeholder="0"
                   />
                   {purchaseForm.formState.errors.quantity && (
                     <p className="text-sm text-red-500 mt-1">{purchaseForm.formState.errors.quantity.message}</p>
@@ -363,9 +375,21 @@ export function EditMovementModal({ movement, companyId, warehouses, onSuccess, 
               <Input
                 type="number"
                 inputMode="numeric"
-                {...saleForm.register("quantity", { valueAsNumber: true })}
-                placeholder="1"
-                min="0"
+                value={saleForm.watch("quantity") ?? ""}
+                onChange={(e) => {
+                  const val = e.target.value === "" ? undefined : Number(e.target.value)
+                  saleForm.setValue("quantity", val as any, { shouldValidate: false })
+                }}
+                onBlur={() => {
+                  const currentValue = saleForm.watch("quantity")
+                  if (!currentValue || currentValue < 1) {
+                    saleForm.setValue("quantity", 1 as any, { shouldValidate: true })
+                  } else {
+                    saleForm.setValue("quantity", currentValue, { shouldValidate: true })
+                  }
+                }}
+                placeholder="0"
+                min="1"
               />
               {saleForm.formState.errors.quantity && (
                 <p className="text-sm text-red-500">{saleForm.formState.errors.quantity.message}</p>

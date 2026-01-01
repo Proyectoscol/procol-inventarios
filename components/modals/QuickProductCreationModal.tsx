@@ -368,9 +368,21 @@ export function QuickProductCreationModal({
                 <Input
                   type="number"
                   inputMode="numeric"
-                  min="0"
-                  {...purchaseForm.register("quantity", { valueAsNumber: true })}
-                  placeholder="1"
+                  min="1"
+                  value={purchaseForm.watch("quantity") ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value === "" ? undefined : Number(e.target.value)
+                    purchaseForm.setValue("quantity", val as any, { shouldValidate: false })
+                  }}
+                  onBlur={() => {
+                    const currentValue = purchaseForm.watch("quantity")
+                    if (!currentValue || currentValue < 1) {
+                      purchaseForm.setValue("quantity", 1 as any, { shouldValidate: true })
+                    } else {
+                      purchaseForm.setValue("quantity", currentValue, { shouldValidate: true })
+                    }
+                  }}
+                  placeholder="0"
                   required
                 />
                 {purchaseForm.formState.errors.quantity && (

@@ -166,9 +166,21 @@ export function PurchaseForm({ companyId, warehouses, preselectedProductId, pres
         <Input
           type="number"
           inputMode="numeric"
-          min="0"
-          {...register("quantity", { valueAsNumber: true })}
-          placeholder="1"
+          min="1"
+          value={quantity ?? ""}
+          onChange={(e) => {
+            const val = e.target.value === "" ? undefined : Number(e.target.value)
+            setValue("quantity", val as any, { shouldValidate: false })
+          }}
+          onBlur={() => {
+            const currentValue = watch("quantity")
+            if (!currentValue || currentValue < 1) {
+              setValue("quantity", 1 as any, { shouldValidate: true })
+            } else {
+              setValue("quantity", currentValue, { shouldValidate: true })
+            }
+          }}
+          placeholder="0"
           required
         />
         {errors.quantity && (
