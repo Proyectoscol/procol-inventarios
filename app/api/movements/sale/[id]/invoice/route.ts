@@ -243,7 +243,10 @@ export async function GET(
       doc.on('error', reject)
     })
 
-    return new NextResponse(pdfBuffer, {
+    // Convertir Buffer a Uint8Array para NextResponse
+    const uint8Array = new Uint8Array(pdfBuffer)
+
+    return new NextResponse(uint8Array, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `inline; filename="factura-${relatedMovements[0]?.movementNumber || 'venta'}.pdf"`,
