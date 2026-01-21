@@ -15,19 +15,31 @@ export async function GET(req: NextRequest) {
     const companyId = searchParams.get("companyId")
     const year = searchParams.get("year")
     const month = searchParams.get("month")
+    const from = searchParams.get("from")
+    const to = searchParams.get("to")
     const warehouseIds = searchParams.get("warehouseIds")
     
-    if (!companyId || !year || !month) {
-      return NextResponse.json({ error: "companyId, year y month requeridos" }, { status: 400 })
+    if (!companyId) {
+      return NextResponse.json({ error: "companyId requerido" }, { status: 400 })
     }
 
-    // Calcular rango de fechas del mes en UTC
-    // El mes se interpreta en zona horaria de Colombia
-    // Inicio del mes: 1er día 00:00 Colombia = 05:00 UTC del mismo día
-    const startDate = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, 1, 5, 0, 0, 0))
-    // Fin del mes: último día 23:59 Colombia = 04:59 UTC del día siguiente
-    const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate()
-    const endDate = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, lastDay + 1, 4, 59, 59, 999))
+    let startDate: Date
+    let endDate: Date
+
+    if (from && to) {
+      // Usar rango de fechas proporcionado
+      startDate = new Date(from)
+      endDate = new Date(to)
+    } else if (year && month) {
+      // Comportamiento original: calcular rango del mes
+      // Inicio del mes: 1er día 00:00 Colombia = 05:00 UTC del mismo día
+      startDate = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, 1, 5, 0, 0, 0))
+      // Fin del mes: último día 23:59 Colombia = 04:59 UTC del día siguiente
+      const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate()
+      endDate = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, lastDay + 1, 4, 59, 59, 999))
+    } else {
+      return NextResponse.json({ error: "Debe proporcionar (year y month) o (from y to)" }, { status: 400 })
+    }
 
     const whereClause: any = {
       product: { companyId },
@@ -57,12 +69,20 @@ export async function GET(req: NextRequest) {
     // Agrupar por día en zona horaria de Colombia
     const daysWithActivity = new Set<string>()
     movements.forEach(m => {
-      const day = getColombiaDay(m.movementDate)
-      daysWithActivity.add(day.toString())
+      // Si es un rango (from/to), usar formato YYYY-MM-DD, si no, usar número de día
+      if (from && to) {
+        const dateStr = m.movementDate.toISOString().split('T')[0]
+        daysWithActivity.add(dateStr)
+      } else {
+        const day = getColombiaDay(m.movementDate)
+        daysWithActivity.add(day.toString())
+      }
     })
 
     return NextResponse.json({
-      daysWithActivity: Array.from(daysWithActivity).map(d => parseInt(d))
+      daysWithActivity: from && to 
+        ? Array.from(daysWithActivity) 
+        : Array.from(daysWithActivity).map(d => parseInt(d))
     })
   } catch (error: any) {
     console.error("Error obteniendo calendario:", error)

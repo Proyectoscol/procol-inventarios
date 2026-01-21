@@ -9,10 +9,17 @@ interface MovementCalendarProps {
   companyId: string
   warehouseIds?: string[]
   onDateSelect: (date: Date) => void
+  dateRange?: { from: Date; to: Date }
 }
 
-export function MovementCalendar({ companyId, warehouseIds = [], onDateSelect }: MovementCalendarProps) {
-  const [currentDate, setCurrentDate] = useState(new Date())
+export function MovementCalendar({ companyId, warehouseIds = [], onDateSelect, dateRange }: MovementCalendarProps) {
+  const [currentDate, setCurrentDate] = useState(() => {
+    // Si hay un rango de fechas, usar el mes inicial del rango
+    if (dateRange) {
+      return new Date(dateRange.from)
+    }
+    return new Date()
+  })
   const [daysWithActivity, setDaysWithActivity] = useState<Set<number>>(new Set())
   const [loading, setLoading] = useState(false)
 
@@ -20,8 +27,16 @@ export function MovementCalendar({ companyId, warehouseIds = [], onDateSelect }:
   const month = currentDate.getMonth()
 
   useEffect(() => {
+    // Si hay un rango de fechas, actualizar currentDate al mes inicial
+    if (dateRange) {
+      const rangeStart = new Date(dateRange.from)
+      setCurrentDate(rangeStart)
+    }
+  }, [dateRange])
+
+  useEffect(() => {
     fetchActivityDays()
-  }, [year, month, companyId, warehouseIds])
+  }, [year, month, companyId, warehouseIds, dateRange])
 
   const fetchActivityDays = async () => {
     if (!companyId) return
@@ -31,12 +46,29 @@ export function MovementCalendar({ companyId, warehouseIds = [], onDateSelect }:
       const warehouseParams = warehouseIds.length > 0 
         ? `&warehouseIds=${warehouseIds.join(",")}`
         : ""
-      const res = await fetch(
-        `/api/movements/calendar?companyId=${companyId}&year=${year}&month=${month + 1}${warehouseParams}`
-      )
+      
+      let url = ""
+      if (dateRange) {
+        // Si hay rango de fechas, usar el rango
+        const from = new Date(dateRange.from)
+        from.setHours(0, 0, 0, 0)
+        const to = new Date(dateRange.to)
+        to.setHours(23, 59, 59, 999)
+        url = `/api/movements/calendar?companyId=${companyId}&from=${from.toISOString()}&to=${to.toISOString()}${warehouseParams}`
+      } else {
+        // Comportamiento original: por mes
+        url = `/api/movements/calendar?companyId=${companyId}&year=${year}&month=${month + 1}${warehouseParams}`
+      }
+      
+      const res = await fetch(url)
       if (res.ok) {
         const data = await res.json()
-        setDaysWithActivity(new Set(data.daysWithActivity))
+        // Si hay rango, los días vienen como strings YYYY-MM-DD, si no, como números
+        if (dateRange) {
+          setDaysWithActivity(new Set(data.daysWithActivity || []))
+        } else {
+          setDaysWithActivity(new Set(data.daysWithActivity || []))
+        }
       }
     } catch (error) {
       console.error("Error cargando días con actividad:", error)

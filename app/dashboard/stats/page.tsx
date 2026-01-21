@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { BackButton } from "@/components/shared/BackButton"
 import { MovementCalendar } from "@/components/calendar/MovementCalendar"
+import { RangeCalendar } from "@/components/calendar/RangeCalendar"
 import { DayDetailsModal } from "@/components/calendar/DayDetailsModal"
 import { StatDetailsModal } from "@/components/modals/StatDetailsModal"
 import { ProductDetailsModal } from "@/components/modals/ProductDetailsModal"
@@ -546,9 +547,10 @@ export default function StatsPage() {
         {/* Calendario de Movimientos - Movido al final */}
         {selectedCompanyId && (
           <div className="mb-8 -mx-2 sm:mx-0">
-            <MovementCalendar
+            <RangeCalendar
               companyId={selectedCompanyId}
               warehouseIds={Array.from(selectedWarehouseIds)}
+              dateRange={dateRange}
               onDateSelect={(date) => setSelectedDate(date)}
             />
           </div>
