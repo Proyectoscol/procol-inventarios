@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { X, ShoppingCart, DollarSign, TrendingUp, Package, Calendar, CreditCard, Edit } from "lucide-react"
@@ -17,6 +18,7 @@ interface CustomerDetailsModalProps {
 }
 
 export function CustomerDetailsModal({ customer, companyId, onClose }: CustomerDetailsModalProps) {
+  const router = useRouter()
   const [movements, setMovements] = useState<Movement[]>([])
   const [summary, setSummary] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -173,7 +175,16 @@ export function CustomerDetailsModal({ customer, companyId, onClose }: CustomerD
                 </CardContent>
               </Card>
 
-              <Card className="bg-orange-50 border-orange-200">
+              <Card 
+                className="bg-orange-50 border-orange-200 cursor-pointer hover:shadow-lg transition-shadow"
+                onClick={() => {
+                  if (typeof window !== "undefined") {
+                    sessionStorage.setItem("creditsReferrer", "/dashboard/customers")
+                  }
+                  onClose()
+                  router.push("/dashboard/credits")
+                }}
+              >
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium flex items-center gap-2">
                     <CreditCard className="h-4 w-4 text-orange-600" /> Crédito Pendiente
