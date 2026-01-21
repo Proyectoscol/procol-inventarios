@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner"
 import { EditMovementModal } from "@/components/modals/EditMovementModal"
+import { DateRangeSelector } from "@/components/shared/DateRangeSelector"
 import { toast } from "sonner"
 import { 
   ShoppingCart, 
@@ -14,11 +15,15 @@ import {
   Edit, 
   FileText,
   TrendingUp,
-  User as UserIcon
+  User as UserIcon,
+  Warehouse,
+  Calendar,
+  RotateCcw
 } from "lucide-react"
 import { formatColombiaDate, formatColombiaTime } from "@/lib/date-utils"
 import { formatCurrency } from "@/lib/utils"
 import { useCompany } from "@/contexts/CompanyContext"
+import { cn } from "@/lib/utils"
 
 export default function MovementsPage() {
   const { data: session, status } = useSession()
@@ -28,6 +33,18 @@ export default function MovementsPage() {
   const [loading, setLoading] = useState(true)
   const [selectedMovement, setSelectedMovement] = useState<any>(null)
   const [warehouses, setWarehouses] = useState<any[]>([])
+  const [selectedWarehouseIds, setSelectedWarehouseIds] = useState<Set<string>>(new Set())
+  const [isLoadingMovements, setIsLoadingMovements] = useState(false)
+  
+  // Estado para el rango de fechas - Por defecto: todo el historial
+  const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>(() => {
+    const to = new Date()
+    to.setHours(23, 59, 59, 999)
+    // Fecha de inicio: 1 de enero de 2000 (fecha muy antigua para incluir todo el historial)
+    const from = new Date(2000, 0, 1)
+    from.setHours(0, 0, 0, 0)
+    return { from, to }
+  })
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -37,10 +54,24 @@ export default function MovementsPage() {
 
   useEffect(() => {
     if (selectedCompanyId) {
-      fetchMovements(selectedCompanyId)
       fetchWarehouses(selectedCompanyId)
     }
   }, [selectedCompanyId])
+
+  useEffect(() => {
+    if (selectedCompanyId && warehouses.length > 0) {
+      // Seleccionar todas las bodegas por defecto
+      const allIds = new Set<string>(warehouses.map((w: any) => w.id))
+      setSelectedWarehouseIds(allIds)
+      // Cargar movimientos con todas las bodegas seleccionadas
+      if (allIds.size > 0) {
+        fetchMovements(selectedCompanyId, Array.from(allIds))
+      } else {
+        fetchMovements(selectedCompanyId, [])
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCompanyId, warehouses])
 
   const fetchWarehouses = async (companyId: string) => {
     try {
@@ -54,10 +85,26 @@ export default function MovementsPage() {
     }
   }
 
-  const fetchMovements = async (companyId: string) => {
+  const fetchMovements = async (companyId: string, warehouseIds: string[] = [], dateRangeToUse?: { from: Date; to: Date }) => {
+    // Evitar múltiples llamadas simultáneas
+    if (isLoadingMovements) return
+    
+    setIsLoadingMovements(true)
     try {
-      setLoading(true)
-      const res = await fetch(`/api/movements?companyId=${companyId}`)
+      const range = dateRangeToUse || dateRange
+      const from = new Date(range.from)
+      from.setHours(0, 0, 0, 0)
+      const to = new Date(range.to)
+      to.setHours(23, 59, 59, 999)
+
+      // Construir parámetros de bodegas
+      const warehouseParams = warehouseIds.length > 0 
+        ? `&warehouseIds=${warehouseIds.join(",")}`
+        : ""
+
+      const res = await fetch(
+        `/api/movements?companyId=${companyId}&from=${from.toISOString()}&to=${to.toISOString()}${warehouseParams}`
+      )
       if (res.ok) {
         const data = await res.json()
         setMovements(data.movements || [])
@@ -68,9 +115,63 @@ export default function MovementsPage() {
       console.error("Error cargando movimientos:", error)
       toast.error("Error cargando movimientos")
     } finally {
+      setIsLoadingMovements(false)
       setLoading(false)
     }
   }
+
+  const toggleWarehouse = (warehouseId: string) => {
+    setSelectedWarehouseIds(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(warehouseId)) {
+        newSet.delete(warehouseId)
+      } else {
+        newSet.add(warehouseId)
+      }
+      return newSet
+    })
+  }
+
+  const resetFilters = () => {
+    // Restablecer rango de fechas a todo el historial
+    const to = new Date()
+    to.setHours(23, 59, 59, 999)
+    const from = new Date(2000, 0, 1)
+    from.setHours(0, 0, 0, 0)
+    setDateRange({ from, to })
+    
+    // Seleccionar todas las bodegas
+    if (warehouses.length > 0) {
+      const allIds = new Set<string>(warehouses.map((w: any) => w.id))
+      setSelectedWarehouseIds(allIds)
+      
+      // Recargar movimientos con filtros restablecidos
+      if (selectedCompanyId) {
+        fetchMovements(selectedCompanyId, Array.from(allIds), { from, to })
+      }
+    }
+  }
+
+  const handleDateRangeChange = (from: Date, to: Date) => {
+    setDateRange({ from, to })
+    // Recargar movimientos inmediatamente cuando cambia el rango de fechas
+    if (selectedCompanyId) {
+      const selectedIds = Array.from(selectedWarehouseIds)
+      fetchMovements(selectedCompanyId, selectedIds, { from, to })
+    }
+  }
+
+  // Recargar movimientos cuando cambien las bodegas seleccionadas (solo si no se está cargando)
+  useEffect(() => {
+    if (selectedCompanyId && warehouses.length > 0 && !isLoadingMovements) {
+      const selectedIds = Array.from(selectedWarehouseIds)
+      // Solo cargar si hay bodegas seleccionadas o si no hay bodegas disponibles
+      if (selectedIds.length > 0 || warehouses.length === 0) {
+        fetchMovements(selectedCompanyId, selectedIds)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedWarehouseIds, selectedCompanyId])
 
   const handleEditSuccess = () => {
     if (selectedCompanyId) {
@@ -128,6 +229,89 @@ export default function MovementsPage() {
           </p>
         </div>
 
+        {/* Filtros de Bodegas y Fechas */}
+        <div className="mb-6">
+          {/* Botón de Restablecer Filtros */}
+          <div className="flex justify-end mb-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={resetFilters}
+              disabled={isLoadingMovements}
+              className="flex items-center gap-2"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Restablecer Todos los Filtros
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Filtros de Bodegas */}
+            {warehouses.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Warehouse className="h-5 w-5" />
+                    Filtrar por Bodegas
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {warehouses.map((warehouse) => {
+                      const isSelected = selectedWarehouseIds.has(warehouse.id)
+                      return (
+                        <Button
+                          key={warehouse.id}
+                          variant={isSelected ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => toggleWarehouse(warehouse.id)}
+                          disabled={isLoadingMovements}
+                          className={cn(
+                            "transition-all",
+                            isSelected && "bg-primary text-primary-foreground",
+                            isLoadingMovements && "opacity-50 cursor-not-allowed"
+                          )}
+                        >
+                          {warehouse.name}
+                        </Button>
+                      )
+                    })}
+                  </div>
+                  {selectedWarehouseIds.size === 0 && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      ⚠️ No hay bodegas seleccionadas. Selecciona al menos una para ver movimientos.
+                    </p>
+                  )}
+                  {isLoadingMovements && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Cargando movimientos...
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Filtros de Fecha */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  Filtrar por Período
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <DateRangeSelector
+                  from={dateRange.from}
+                  to={dateRange.to}
+                  onChange={handleDateRangeChange}
+                />
+                <p className="text-sm text-muted-foreground mt-3">
+                  Selecciona un rango de fechas para ver los movimientos del período
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
 
         {/* Resumen */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
