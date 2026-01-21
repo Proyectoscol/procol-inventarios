@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { BackButton } from "@/components/shared/BackButton"
 import { MovementCalendar } from "@/components/calendar/MovementCalendar"
 import { DayDetailsModal } from "@/components/calendar/DayDetailsModal"
+import { StatDetailsModal } from "@/components/modals/StatDetailsModal"
 
 export default function StatsPage() {
   const { data: session, status } = useSession()
@@ -14,6 +15,7 @@ export default function StatsPage() {
   const [stats, setStats] = useState<any>(null)
   const [companyId, setCompanyId] = useState<string>("")
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+  const [selectedStat, setSelectedStat] = useState<{ type: string; title: string } | null>(null)
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -53,7 +55,7 @@ export default function StatsPage() {
           .then(r => r.json())
       ])
 
-      setStats({ sales, profit, purchases, cashFlow, customers: customers.customers || [] })
+      setStats({ sales, profit, purchases, cashFlow, customers: customers.customers || [], dateRange: { from, to } })
     } catch (error) {
       console.error("Error cargando estadísticas:", error)
     }
@@ -72,7 +74,10 @@ export default function StatsPage() {
         <h1 className="text-3xl font-bold mb-6">Estadísticas y Reportes</h1>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card>
+          <Card 
+            className="cursor-pointer hover:shadow-lg transition-shadow"
+            onClick={() => setSelectedStat({ type: "sales", title: "Ventas Totales" })}
+          >
             <CardHeader>
               <CardTitle>💰 Ventas Totales</CardTitle>
             </CardHeader>
@@ -86,7 +91,10 @@ export default function StatsPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card 
+            className="cursor-pointer hover:shadow-lg transition-shadow"
+            onClick={() => setSelectedStat({ type: "cash", title: "Ventas en Contado" })}
+          >
             <CardHeader>
               <CardTitle>💵 Contado</CardTitle>
             </CardHeader>
@@ -97,7 +105,10 @@ export default function StatsPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card 
+            className="cursor-pointer hover:shadow-lg transition-shadow"
+            onClick={() => setSelectedStat({ type: "profit", title: "Ganancia Neta" })}
+          >
             <CardHeader>
               <CardTitle>📊 Ganancia Neta</CardTitle>
             </CardHeader>
@@ -142,7 +153,10 @@ export default function StatsPage() {
         {stats && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
             {/* Compras Totales */}
-            <Card>
+            <Card 
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => setSelectedStat({ type: "purchases", title: "Compras Totales" })}
+            >
               <CardHeader>
                 <CardTitle className="text-base md:text-lg">🛒 Compras Totales</CardTitle>
               </CardHeader>
@@ -157,7 +171,15 @@ export default function StatsPage() {
             </Card>
 
             {/* Crédito Pendiente */}
-            <Card>
+            <Card 
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => {
+                if (typeof window !== "undefined") {
+                  sessionStorage.setItem("creditsReferrer", "/dashboard/stats")
+                }
+                router.push("/dashboard/credits")
+              }}
+            >
               <CardHeader>
                 <CardTitle className="text-base md:text-lg">💳 Crédito Pendiente</CardTitle>
               </CardHeader>
@@ -172,7 +194,10 @@ export default function StatsPage() {
             </Card>
 
             {/* Total Unidades Vendidas */}
-            <Card>
+            <Card 
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => setSelectedStat({ type: "units", title: "Unidades Vendidas" })}
+            >
               <CardHeader>
                 <CardTitle className="text-base md:text-lg">📦 Unidades Vendidas</CardTitle>
               </CardHeader>
@@ -187,7 +212,10 @@ export default function StatsPage() {
             </Card>
 
             {/* Promedio de Venta */}
-            <Card>
+            <Card 
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => setSelectedStat({ type: "average", title: "Promedio de Venta" })}
+            >
               <CardHeader>
                 <CardTitle className="text-base md:text-lg">📊 Promedio de Venta</CardTitle>
               </CardHeader>
@@ -204,7 +232,10 @@ export default function StatsPage() {
             </Card>
 
             {/* Flujo de Caja Neto */}
-            <Card>
+            <Card 
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => setSelectedStat({ type: "cashflow", title: "Flujo de Caja Neto" })}
+            >
               <CardHeader>
                 <CardTitle className="text-base md:text-lg">💵 Flujo de Caja Neto</CardTitle>
               </CardHeader>
@@ -221,7 +252,10 @@ export default function StatsPage() {
             </Card>
 
             {/* Total Movimientos */}
-            <Card>
+            <Card 
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => setSelectedStat({ type: "all", title: "Total Movimientos" })}
+            >
               <CardHeader>
                 <CardTitle className="text-base md:text-lg">🔄 Total Movimientos</CardTitle>
               </CardHeader>
@@ -236,7 +270,10 @@ export default function StatsPage() {
             </Card>
 
             {/* Total Ventas Realizadas */}
-            <Card>
+            <Card 
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => setSelectedStat({ type: "sales", title: "Total Ventas" })}
+            >
               <CardHeader>
                 <CardTitle className="text-base md:text-lg">📈 Total Ventas</CardTitle>
               </CardHeader>
@@ -251,7 +288,10 @@ export default function StatsPage() {
             </Card>
 
             {/* Total Compras Realizadas */}
-            <Card>
+            <Card 
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => setSelectedStat({ type: "purchases", title: "Total Compras" })}
+            >
               <CardHeader>
                 <CardTitle className="text-base md:text-lg">🛍️ Total Compras</CardTitle>
               </CardHeader>
@@ -266,7 +306,10 @@ export default function StatsPage() {
             </Card>
 
             {/* Margen de Ganancia */}
-            <Card>
+            <Card 
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => setSelectedStat({ type: "profit", title: "Margen de Ganancia" })}
+            >
               <CardHeader>
                 <CardTitle className="text-base md:text-lg">📉 Margen de Ganancia</CardTitle>
               </CardHeader>
@@ -340,6 +383,18 @@ export default function StatsPage() {
             date={selectedDate}
             companyId={companyId}
             onClose={() => setSelectedDate(null)}
+          />
+        )}
+
+        {/* Modal de detalles de estadísticas */}
+        {selectedStat && companyId && stats?.dateRange && (
+          <StatDetailsModal
+            open={!!selectedStat}
+            onClose={() => setSelectedStat(null)}
+            title={selectedStat.title}
+            companyId={companyId}
+            type={selectedStat.type as any}
+            dateRange={stats.dateRange}
           />
         )}
     </div>
