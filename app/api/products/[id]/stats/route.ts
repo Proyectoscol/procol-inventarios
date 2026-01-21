@@ -222,9 +222,7 @@ export async function GET(
       product: {
         id: product.id,
         name: product.name,
-        description: product.description,
-        unit: product.unit,
-        category: product.category
+        description: product.description
       },
       stock: {
         total: totalStock,

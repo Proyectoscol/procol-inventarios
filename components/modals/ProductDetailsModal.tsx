@@ -129,7 +129,7 @@ export function ProductDetailsModal({
                           {stats.stock.total.toLocaleString("es-CO")}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          {stats.product.unit || "unidades"}
+                          unidades
                         </p>
                       </CardContent>
                     </Card>
@@ -243,7 +243,7 @@ export function ProductDetailsModal({
                             <div key={stock.warehouseId} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                               <span className="font-medium">{stock.warehouseName}</span>
                               <span className="text-lg font-bold">
-                                {stock.quantity.toLocaleString("es-CO")} {stats.product.unit || "unidades"}
+                                {stock.quantity.toLocaleString("es-CO")} unidades
                               </span>
                             </div>
                           ))}
