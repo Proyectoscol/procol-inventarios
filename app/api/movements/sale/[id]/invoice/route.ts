@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import PDFDocument from "pdfkit"
+import { jsPDF } from "jspdf"
 
 export async function GET(
   req: NextRequest,
@@ -62,194 +62,211 @@ export async function GET(
     const shippingCost = relatedMovements.reduce((sum, m) => sum + Number(m.shippingCost || 0), 0)
     const total = subtotal + shippingCost
 
-    // Generar PDF - configurar para evitar búsqueda de archivos de fuentes
-    // Usar opciones que eviten la búsqueda de archivos externos
-    const doc = new PDFDocument({ 
-      margin: 50, 
-      size: 'LETTER',
-      // No especificar fontFamily para usar la predeterminada embebida
-    })
-    const chunks: Buffer[] = []
-
-    doc.on('data', (chunk: Buffer) => chunks.push(chunk))
-
     // Obtener información de la compañía
     const companyId = initialMovement.product.companyId
     const company = await prisma.company.findUnique({
       where: { id: companyId }
     })
 
+    // Crear PDF con jsPDF (no requiere archivos de fuentes externos)
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'letter'
+    })
+
+    let yPosition = 20
+
     // Header
-    doc.fontSize(24).text('FACTURA DE VENTA', { align: 'center' })
-    doc.moveDown()
+    doc.setFontSize(24)
+    doc.text('FACTURA DE VENTA', 105, yPosition, { align: 'center' })
+    yPosition += 10
 
     // Información de la empresa
     if (company) {
-      doc.fontSize(14).text(company.name, { align: 'center' })
-      doc.moveDown(0.5)
+      doc.setFontSize(14)
+      doc.text(company.name, 105, yPosition, { align: 'center' })
+      yPosition += 8
     }
 
     // Número de factura y fecha
-    doc.fontSize(12)
-    doc.text(`Factura No: ${relatedMovements[0]?.movementNumber || 'N/A'}`, 50, doc.y)
-    doc.text(`Fecha: ${new Date(initialMovement.movementDate).toLocaleDateString('es-CO', {
+    doc.setFontSize(12)
+    doc.text(`Factura No: ${relatedMovements[0]?.movementNumber || 'N/A'}`, 20, yPosition)
+    const fechaStr = new Date(initialMovement.movementDate).toLocaleDateString('es-CO', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
-    })}`, 350, doc.y - 15)
-    doc.moveDown(2)
+    })
+    doc.text(`Fecha: ${fechaStr}`, 140, yPosition)
+    yPosition += 15
 
     // Información del cliente
-    doc.fontSize(14).text('INFORMACIÓN DEL CLIENTE', { underline: true })
-    doc.moveDown(0.5)
-    doc.fontSize(11)
+    doc.setFontSize(14)
+    doc.text('INFORMACIÓN DEL CLIENTE', 20, yPosition)
+    doc.setLineWidth(0.5)
+    doc.line(20, yPosition + 2, 190, yPosition + 2)
+    yPosition += 8
+    
+    doc.setFontSize(11)
     if (initialMovement.customer) {
-      doc.text(`Nombre: ${initialMovement.customer.name}`)
+      doc.text(`Nombre: ${initialMovement.customer.name}`, 20, yPosition)
+      yPosition += 6
       if (initialMovement.customer.phone) {
-        doc.text(`Teléfono: ${initialMovement.customer.phone}`)
+        doc.text(`Teléfono: ${initialMovement.customer.phone}`, 20, yPosition)
+        yPosition += 6
       }
       if (initialMovement.customer.email) {
-        doc.text(`Email: ${initialMovement.customer.email}`)
+        doc.text(`Email: ${initialMovement.customer.email}`, 20, yPosition)
+        yPosition += 6
       }
       if (initialMovement.customer.address) {
-        doc.text(`Dirección: ${initialMovement.customer.address}`)
+        doc.text(`Dirección: ${initialMovement.customer.address}`, 20, yPosition)
+        yPosition += 6
       }
     } else {
-      doc.text('Cliente: Sin especificar')
+      doc.text('Cliente: Sin especificar', 20, yPosition)
+      yPosition += 6
     }
-    doc.moveDown(2)
+    yPosition += 5
 
     // Productos
-    doc.fontSize(14).text('PRODUCTOS', { underline: true })
-    doc.moveDown(0.5)
+    doc.setFontSize(14)
+    doc.text('PRODUCTOS', 20, yPosition)
+    doc.line(20, yPosition + 2, 190, yPosition + 2)
+    yPosition += 8
 
-    // Tabla de productos
-    const tableTop = doc.y
-    const itemHeight = 60
-    let currentY = tableTop
-
-    // Headers - usar solo fontSize sin especificar fuente (usa la predeterminada)
-    doc.fontSize(10)
-    // Hacer texto en negrita usando opciones
-    doc.text('Producto', 50, currentY, { continued: false })
-    doc.text('Bodega', 200, currentY)
-    doc.text('Cant.', 300, currentY, { width: 50, align: 'right' })
-    doc.text('Precio Unit.', 360, currentY, { width: 80, align: 'right' })
-    doc.text('Total', 450, currentY, { width: 100, align: 'right' })
-
-    currentY += 20
-    doc.moveTo(50, currentY).lineTo(550, currentY).stroke()
+    // Headers de tabla
+    doc.setFontSize(10)
+    doc.setFont(undefined, 'bold')
+    doc.text('Producto', 20, yPosition)
+    doc.text('Bodega', 70, yPosition)
+    doc.text('Cant.', 110, yPosition, { align: 'right' })
+    doc.text('Precio Unit.', 130, yPosition, { align: 'right' })
+    doc.text('Total', 180, yPosition, { align: 'right' })
+    yPosition += 5
+    doc.line(20, yPosition, 190, yPosition)
+    yPosition += 5
 
     // Items
-    doc.fontSize(9)
-    relatedMovements.forEach((movement, index) => {
-      if (currentY > 700) {
+    doc.setFont(undefined, 'normal')
+    doc.setFontSize(9)
+    relatedMovements.forEach((movement) => {
+      if (yPosition > 250) {
         doc.addPage()
-        currentY = 50
+        yPosition = 20
       }
 
-      const productName = movement.product.name
-      const warehouseName = movement.warehouse.name
+      const productName = movement.product.name.substring(0, 25) // Limitar longitud
+      const warehouseName = movement.warehouse.name.substring(0, 15)
       const quantity = movement.quantity
       const unitPrice = Number(movement.unitPrice)
       const totalAmount = Number(movement.totalAmount)
 
-      // Producto (con imagen si existe en imageBase64)
-      // Las imágenes están en el campo imageBase64 del producto
+      doc.text(productName, 20, yPosition)
+      doc.text(warehouseName, 70, yPosition)
+      doc.text(quantity.toString(), 110, yPosition, { align: 'right' })
+      doc.text(`$${unitPrice.toLocaleString('es-CO')}`, 130, yPosition, { align: 'right' })
+      doc.text(`$${totalAmount.toLocaleString('es-CO')}`, 180, yPosition, { align: 'right' })
 
-      doc.text(productName, 50, currentY, { width: 140 })
-      doc.text(warehouseName, 200, currentY, { width: 90 })
-      doc.text(quantity.toString(), 300, currentY, { width: 50, align: 'right' })
-      doc.text(`$${unitPrice.toLocaleString('es-CO')}`, 360, currentY, { width: 80, align: 'right' })
-      doc.text(`$${totalAmount.toLocaleString('es-CO')}`, 450, currentY, { width: 100, align: 'right' })
-
-      currentY += itemHeight
+      yPosition += 8
     })
 
     // Totales
-    currentY += 10
-    doc.moveTo(50, currentY).lineTo(550, currentY).stroke()
-    currentY += 10
+    yPosition += 5
+    doc.line(20, yPosition, 190, yPosition)
+    yPosition += 8
 
-    doc.fontSize(11)
-    doc.text('Subtotal:', 400, currentY, { width: 100, align: 'right' })
-    doc.text(`$${subtotal.toLocaleString('es-CO')}`, 450, currentY, { width: 100, align: 'right' })
-    currentY += 20
+    doc.setFontSize(11)
+    doc.text('Subtotal:', 150, yPosition, { align: 'right' })
+    doc.text(`$${subtotal.toLocaleString('es-CO')}`, 180, yPosition, { align: 'right' })
+    yPosition += 8
 
     if (shippingCost > 0) {
-      doc.text('Envío:', 400, currentY, { width: 100, align: 'right' })
-      doc.text(`$${shippingCost.toLocaleString('es-CO')}`, 450, currentY, { width: 100, align: 'right' })
-      currentY += 20
+      doc.text('Envío:', 150, yPosition, { align: 'right' })
+      doc.text(`$${shippingCost.toLocaleString('es-CO')}`, 180, yPosition, { align: 'right' })
+      yPosition += 8
     }
 
-    doc.fontSize(14)
-    doc.text('TOTAL:', 400, currentY, { width: 100, align: 'right' })
-    doc.text(`$${total.toLocaleString('es-CO')}`, 450, currentY, { width: 100, align: 'right' })
-    currentY += 30
+    doc.setFontSize(14)
+    doc.setFont(undefined, 'bold')
+    doc.text('TOTAL:', 150, yPosition, { align: 'right' })
+    doc.text(`$${total.toLocaleString('es-CO')}`, 180, yPosition, { align: 'right' })
+    yPosition += 12
 
     // Información de pago
-    doc.fontSize(12)
-    doc.text('CONDICIONES DE PAGO', { underline: true })
-    doc.moveDown(0.5)
-    doc.fontSize(10)
+    doc.setFontSize(12)
+    doc.setFont(undefined, 'normal')
+    doc.text('CONDICIONES DE PAGO', 20, yPosition)
+    doc.line(20, yPosition + 2, 190, yPosition + 2)
+    yPosition += 8
+    doc.setFontSize(10)
     
     const paymentType = initialMovement.paymentType
     if (paymentType === 'cash') {
-      doc.text('Forma de pago: Contado')
+      doc.text('Forma de pago: Contado', 20, yPosition)
+      yPosition += 6
     } else if (paymentType === 'credit') {
-      doc.text('Forma de pago: Crédito')
+      doc.text('Forma de pago: Crédito', 20, yPosition)
+      yPosition += 6
       if (initialMovement.creditDays) {
-        doc.text(`Días de crédito: ${initialMovement.creditDays} días`)
+        doc.text(`Días de crédito: ${initialMovement.creditDays} días`, 20, yPosition)
+        yPosition += 6
       }
       if (initialMovement.creditDueDate) {
-        doc.text(`Fecha de vencimiento: ${new Date(initialMovement.creditDueDate).toLocaleDateString('es-CO')}`)
+        doc.text(`Fecha de vencimiento: ${new Date(initialMovement.creditDueDate).toLocaleDateString('es-CO')}`, 20, yPosition)
+        yPosition += 6
       }
     } else if (paymentType === 'mixed') {
-      doc.text('Forma de pago: Mixto (Contado + Crédito)')
+      doc.text('Forma de pago: Mixto (Contado + Crédito)', 20, yPosition)
+      yPosition += 6
       const cashAmount = Number(initialMovement.cashAmount || 0)
       const creditAmount = Number(initialMovement.creditAmount || 0)
-      doc.text(`Contado: $${cashAmount.toLocaleString('es-CO')}`)
-      doc.text(`Crédito: $${creditAmount.toLocaleString('es-CO')}`)
+      doc.text(`Contado: $${cashAmount.toLocaleString('es-CO')}`, 20, yPosition)
+      yPosition += 6
+      doc.text(`Crédito: $${creditAmount.toLocaleString('es-CO')}`, 20, yPosition)
+      yPosition += 6
       if (initialMovement.creditDays) {
-        doc.text(`Días de crédito: ${initialMovement.creditDays} días`)
+        doc.text(`Días de crédito: ${initialMovement.creditDays} días`, 20, yPosition)
+        yPosition += 6
       }
       if (initialMovement.creditDueDate) {
-        doc.text(`Fecha de vencimiento: ${new Date(initialMovement.creditDueDate).toLocaleDateString('es-CO')}`)
+        doc.text(`Fecha de vencimiento: ${new Date(initialMovement.creditDueDate).toLocaleDateString('es-CO')}`, 20, yPosition)
+        yPosition += 6
       }
     }
 
     // Notas
     if (initialMovement.notes) {
-      doc.moveDown(1)
-      doc.fontSize(12).text('NOTAS', { underline: true })
-      doc.moveDown(0.5)
-      doc.fontSize(10).text(initialMovement.notes)
+      yPosition += 5
+      doc.setFontSize(12)
+      doc.text('NOTAS', 20, yPosition)
+      doc.line(20, yPosition + 2, 190, yPosition + 2)
+      yPosition += 8
+      doc.setFontSize(10)
+      // Dividir notas en líneas si son muy largas
+      const notesLines = doc.splitTextToSize(initialMovement.notes, 170)
+      doc.text(notesLines, 20, yPosition)
     }
 
     // Footer
-    const pageHeight = doc.page.height
-    const footerY = pageHeight - 50
-    doc.fontSize(8).text(
-      'Gracias por su compra',
-      doc.page.width / 2,
-      footerY,
-      { align: 'center' }
-    )
+    const pageCount = doc.getNumberOfPages()
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i)
+      doc.setFontSize(8)
+      doc.text(
+        'Gracias por su compra',
+        105,
+        doc.internal.pageSize.height - 15,
+        { align: 'center' }
+      )
+    }
 
-    // Finalizar el documento
-    doc.end()
+    // Generar PDF como buffer
+    const pdfBuffer = Buffer.from(doc.output('arraybuffer'))
 
-    // Esperar a que el PDF termine de generarse
-    const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
-      doc.on('end', () => {
-        resolve(Buffer.concat(chunks))
-      })
-      doc.on('error', reject)
-    })
-
-    // Convertir Buffer a Uint8Array para NextResponse
+    // Convertir a Uint8Array para NextResponse
     const uint8Array = new Uint8Array(pdfBuffer)
 
     return new NextResponse(uint8Array, {
