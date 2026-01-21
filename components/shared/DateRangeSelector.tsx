@@ -26,13 +26,15 @@ export function DateRangeSelector({
   className
 }: DateRangeSelectorProps) {
   const [isOpen, setIsOpen] = useState(false)
+  // Siempre empezar mostrando el mes actual
   const [currentMonth, setCurrentMonth] = useState(() => {
-    const fromDate = new Date(from)
-    fromDate.setHours(0, 0, 0, 0)
-    return fromDate
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    return today
   })
   const [selectingStart, setSelectingStart] = useState(true)
   const [tempFrom, setTempFrom] = useState<Date | null>(null)
+  const [tempTo, setTempTo] = useState<Date | null>(null)
   const [hoveredDate, setHoveredDate] = useState<Date | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -41,15 +43,14 @@ export function DateRangeSelector({
     if (!isOpen) {
       setSelectingStart(true)
       setTempFrom(null)
+      setTempTo(null)
+      setHoveredDate(null)
+      // Volver al mes actual cuando se cierra
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      setCurrentMonth(today)
     }
   }, [isOpen])
-
-  // Actualizar currentMonth cuando cambia el rango
-  useEffect(() => {
-    const fromDate = new Date(from)
-    fromDate.setHours(0, 0, 0, 0)
-    setCurrentMonth(fromDate)
-  }, [from])
 
   // Cerrar al hacer click fuera
   useEffect(() => {
@@ -117,6 +118,7 @@ export function DateRangeSelector({
     if (selectingStart) {
       // Seleccionar fecha de inicio
       setTempFrom(normalizedDate)
+      setTempTo(null)
       setSelectingStart(false)
     } else {
       // Seleccionar fecha de fin
@@ -131,6 +133,8 @@ export function DateRangeSelector({
       setIsOpen(false)
       setSelectingStart(true)
       setTempFrom(null)
+      setTempTo(null)
+      setHoveredDate(null)
     }
   }
 
@@ -142,45 +146,58 @@ export function DateRangeSelector({
     const normalizedTo = normalizeDate(to)
     
     // Si estamos seleccionando el fin y hay una fecha de inicio temporal,
-    // mostrar preview del rango desde tempFrom hasta hoveredDate o la fecha actual
+    // mostrar preview del rango desde tempFrom hasta hoveredDate
     if (!selectingStart && tempFrom) {
       const tempFromNormalized = normalizeDate(tempFrom)
       const hoveredNormalized = hoveredDate ? normalizeDate(hoveredDate) : null
       
       // Si hay hover, mostrar rango desde tempFrom hasta hoveredDate
       if (hoveredNormalized) {
-        if (hoveredNormalized >= tempFromNormalized) {
-          return normalizedDate >= tempFromNormalized && normalizedDate <= hoveredNormalized
-        } else {
-          return normalizedDate >= hoveredNormalized && normalizedDate <= tempFromNormalized
-        }
+        const minDate = tempFromNormalized < hoveredNormalized ? tempFromNormalized : hoveredNormalized
+        const maxDate = tempFromNormalized > hoveredNormalized ? tempFromNormalized : hoveredNormalized
+        return normalizedDate >= minDate && normalizedDate <= maxDate
       }
       
       // Si no hay hover, no mostrar rango
       return false
     }
     
-    // Mostrar rango establecido
+    // Mostrar rango establecido (solo si no estamos en proceso de selección)
+    if (tempFrom) return false
     return normalizedDate >= normalizedFrom && normalizedDate <= normalizedTo
   }
 
-  const isDateSelected = (date: Date) => {
+  const isDateSelected = (date: Date, isCurrentMonth: boolean) => {
+    if (!isCurrentMonth) return false
+    
     const normalizedDate = normalizeDate(date)
     const normalizedFrom = normalizeDate(from)
     const normalizedTo = normalizeDate(to)
-    const currentFrom = tempFrom ? normalizeDate(tempFrom) : normalizedFrom
+    const currentFrom = tempFrom ? normalizeDate(tempFrom) : null
+    const currentTo = tempTo ? normalizeDate(tempTo) : null
+    const hoveredNormalized = hoveredDate ? normalizeDate(hoveredDate) : null
     
-    // Si estamos seleccionando inicio, resaltar la fecha temporal
-    if (selectingStart && tempFrom) {
+    // Si estamos seleccionando inicio y hay tempFrom, resaltar solo tempFrom
+    if (selectingStart && currentFrom) {
       return normalizedDate.getTime() === currentFrom.getTime()
     }
     
-    // Si estamos seleccionando fin, resaltar ambas fechas
-    if (!selectingStart && tempFrom) {
-      return normalizedDate.getTime() === currentFrom.getTime() || normalizedDate.getTime() === normalizedDate.getTime()
+    // Si estamos seleccionando fin y hay tempFrom
+    if (!selectingStart && currentFrom) {
+      // Si hay hover, resaltar tempFrom y hoveredDate
+      if (hoveredNormalized) {
+        return normalizedDate.getTime() === currentFrom.getTime() || normalizedDate.getTime() === hoveredNormalized.getTime()
+      }
+      // Si no hay hover, solo resaltar tempFrom
+      return normalizedDate.getTime() === currentFrom.getTime()
     }
     
-    return normalizedDate.getTime() === normalizedFrom.getTime() || normalizedDate.getTime() === normalizedTo.getTime()
+    // Resaltar fechas del rango establecido (solo si no estamos seleccionando)
+    if (!tempFrom) {
+      return normalizedDate.getTime() === normalizedFrom.getTime() || normalizedDate.getTime() === normalizedTo.getTime()
+    }
+    
+    return false
   }
 
   const navigateMonth = (direction: "prev" | "next") => {
@@ -392,22 +409,22 @@ export function DateRangeSelector({
             <div className="grid grid-cols-7 gap-1">
               {days.map((day, idx) => {
                 const normalizedDay = normalizeDate(day.date)
-                const isSelected = isDateSelected(day.date)
+                const isSelected = isDateSelected(day.date, day.isCurrentMonth)
                 const inRange = isDateInRange(day.date, day.isCurrentMonth)
                 const isToday = (() => {
                   const today = normalizeDate(new Date())
                   return normalizedDay.getTime() === today.getTime()
                 })()
-                const isStart = (() => {
-                  const currentFrom = tempFrom ? normalizeDate(tempFrom) : normalizeDate(from)
-                  return normalizedDay.getTime() === currentFrom.getTime() && day.isCurrentMonth
-                })()
-                const isEnd = (() => {
-                  if (!selectingStart && tempFrom) {
-                    return false // Aún no hay fecha final seleccionada
-                  }
-                  return normalizedDay.getTime() === normalizeDate(to).getTime() && day.isCurrentMonth
-                })()
+                
+                // Determinar si es inicio o fin del rango
+                const currentFrom = tempFrom ? normalizeDate(tempFrom) : normalizeDate(from)
+                const hoveredNormalized = hoveredDate ? normalizeDate(hoveredDate) : null
+                const currentEnd = (!selectingStart && tempFrom && hoveredNormalized) 
+                  ? hoveredNormalized 
+                  : normalizeDate(to)
+                
+                const isStart = normalizedDay.getTime() === currentFrom.getTime() && day.isCurrentMonth
+                const isEnd = normalizedDay.getTime() === currentEnd.getTime() && day.isCurrentMonth
 
                 return (
                   <button
@@ -420,20 +437,20 @@ export function DateRangeSelector({
                       }
                     }}
                     onMouseLeave={() => {
-                      if (!selectingStart && tempFrom) {
-                        setHoveredDate(null)
-                      }
+                      setHoveredDate(null)
                     }}
                     disabled={!day.isCurrentMonth}
                     className={cn(
                       "h-8 w-8 text-xs rounded-md transition-colors relative",
-                      !day.isCurrentMonth && "text-gray-300 cursor-not-allowed",
+                      !day.isCurrentMonth && "text-gray-300 cursor-not-allowed opacity-50",
                       day.isCurrentMonth && !isSelected && !inRange && "text-gray-700 hover:bg-gray-100",
                       isSelected && "bg-primary text-white font-semibold hover:bg-primary/90 z-10",
-                      inRange && !isSelected && "bg-primary/10 text-primary font-medium",
+                      inRange && !isSelected && day.isCurrentMonth && "bg-primary/20 text-primary font-semibold",
                       isToday && !isSelected && !inRange && "ring-2 ring-primary ring-offset-1",
                       isStart && "rounded-l-md",
-                      isEnd && "rounded-r-md"
+                      isEnd && "rounded-r-md",
+                      // Bordes redondeados para fechas intermedias del rango
+                      inRange && !isStart && !isEnd && "rounded-none"
                     )}
                   >
                     {day.date.getDate()}
