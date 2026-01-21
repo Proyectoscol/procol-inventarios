@@ -85,6 +85,8 @@ export function SaleForm({ companyId, warehouses, customers: initialCustomers = 
   const [creditDaysType, setCreditDaysType] = useState<"preset" | "custom">("preset")
   const [customCreditDays, setCustomCreditDays] = useState<string>("")
   const [forceUpdate, setForceUpdate] = useState(0)
+  const [editingProductIndex, setEditingProductIndex] = useState<number | null>(null)
+  const [editingProductBackup, setEditingProductBackup] = useState<ProductSaleItem | null>(null)
   const [showProductSearch, setShowProductSearch] = useState(true)
   
   useEffect(() => {
@@ -178,6 +180,9 @@ export function SaleForm({ companyId, warehouses, customers: initialCustomers = 
     setSelectedProduct(null)
     setSelectedWarehouseId("")
     setShowProductSearch(true) // Mantener búsqueda visible
+    // Limpiar estado de edición
+    setEditingProductIndex(null)
+    setEditingProductBackup(null)
     toast.success("Producto agregado", {
       description: `${item.productName} agregado a la venta`,
       duration: 2000
@@ -195,6 +200,10 @@ export function SaleForm({ companyId, warehouses, customers: initialCustomers = 
 
   const handleProductEdit = (index: number) => {
     const item = productItems[index]
+    // Guardar backup del producto antes de editarlo
+    setEditingProductIndex(index)
+    setEditingProductBackup({ ...item })
+    
     // Buscar el producto completo con stock incluido
     fetch(`/api/products/${item.productId}`)
       .then(res => res.json())
@@ -236,10 +245,31 @@ export function SaleForm({ companyId, warehouses, customers: initialCustomers = 
         toast.error("Error al cargar el producto para editar", {
           description: error.message || "Por favor, intenta nuevamente"
         })
+        // Restaurar el producto si hay error
+        if (editingProductBackup && editingProductIndex !== null) {
+          setProductItems(prev => {
+            const newItems = [...prev]
+            newItems.splice(editingProductIndex, 0, editingProductBackup)
+            return newItems
+          })
+          setEditingProductIndex(null)
+          setEditingProductBackup(null)
+        }
       })
   }
 
   const handleProductCardCancel = () => {
+    // Si estaba editando un producto, restaurarlo
+    if (editingProductIndex !== null && editingProductBackup) {
+      setProductItems(prev => {
+        const newItems = [...prev]
+        newItems.splice(editingProductIndex, 0, editingProductBackup)
+        return newItems
+      })
+      setEditingProductIndex(null)
+      setEditingProductBackup(null)
+    }
+    
     setShowProductCard(false)
     setSelectedProduct(null)
     setSelectedWarehouseId("")
@@ -687,33 +717,49 @@ export function SaleForm({ companyId, warehouses, customers: initialCustomers = 
               {paymentType === "mixed" && (
                 <>
                   <div>
-                    <Label>Contado (COP)</Label>
+                    <Label>Contado (COP) - Máximo: ${subtotal.toLocaleString("es-CO")}</Label>
                     <CurrencyInput
                       value={watch("cashAmount") || 0}
                       onChange={(val) => {
-                        setValue("cashAmount", val, { shouldValidate: true })
-                        const credit = subtotal - val
+                        // Limitar al subtotal máximo
+                        const maxCash = Math.min(val, subtotal)
+                        const finalCash = Math.max(0, maxCash)
+                        setValue("cashAmount", finalCash, { shouldValidate: true })
+                        const credit = subtotal - finalCash
                         setValue("creditAmount", credit > 0 ? credit : 0, { shouldValidate: true })
                       }}
-                      placeholder="500,000"
+                      placeholder={`Máximo ${subtotal.toLocaleString("es-CO")}`}
                     />
+                    {watch("cashAmount") && watch("cashAmount") > subtotal && (
+                      <p className="text-xs text-red-500 mt-1">
+                        El contado no puede exceder el total de ${subtotal.toLocaleString("es-CO")}
+                      </p>
+                    )}
                     <p className="text-xs text-muted-foreground mt-1">
-                      Total: ${subtotal.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")} - Crédito: ${(watch("creditAmount") || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                      Total: ${subtotal.toLocaleString("es-CO")} - Crédito: ${(watch("creditAmount") || 0).toLocaleString("es-CO")}
                     </p>
                   </div>
                   <div>
-                    <Label>Crédito (COP)</Label>
+                    <Label>Crédito (COP) - Máximo: ${subtotal.toLocaleString("es-CO")}</Label>
                     <CurrencyInput
                       value={watch("creditAmount") || 0}
                       onChange={(val) => {
-                        setValue("creditAmount", val, { shouldValidate: true })
-                        const cash = subtotal - val
+                        // Limitar al subtotal máximo
+                        const maxCredit = Math.min(val, subtotal)
+                        const finalCredit = Math.max(0, maxCredit)
+                        setValue("creditAmount", finalCredit, { shouldValidate: true })
+                        const cash = subtotal - finalCredit
                         setValue("cashAmount", cash > 0 ? cash : 0, { shouldValidate: true })
                       }}
-                      placeholder="500,000"
+                      placeholder={`Máximo ${subtotal.toLocaleString("es-CO")}`}
                     />
+                    {watch("creditAmount") && watch("creditAmount") > subtotal && (
+                      <p className="text-xs text-red-500 mt-1">
+                        El crédito no puede exceder el total de ${subtotal.toLocaleString("es-CO")}
+                      </p>
+                    )}
                     <p className="text-xs text-muted-foreground mt-1">
-                      Total: ${subtotal.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")} - Contado: ${(watch("cashAmount") || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                      Total: ${subtotal.toLocaleString("es-CO")} - Contado: ${(watch("cashAmount") || 0).toLocaleString("es-CO")}
                     </p>
                   </div>
                 </>
