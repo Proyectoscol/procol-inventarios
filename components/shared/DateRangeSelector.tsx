@@ -195,7 +195,7 @@ export function DateRangeSelector({
     })
   }
 
-  const quickSelect = (preset: "today" | "thisMonth" | "lastMonth" | "last3Months" | "thisYear" | "lastYear" | "last7Days" | "last30Days") => {
+  const quickSelect = (preset: "today" | "thisMonth" | "lastMonth" | "last3Months" | "thisYear" | "lastYear" | "last7Days" | "last30Days" | "allTime") => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     
@@ -204,6 +204,11 @@ export function DateRangeSelector({
     newTo.setHours(23, 59, 59, 999)
 
     switch (preset) {
+      case "allTime":
+        // Todo el historial: desde el 1 de enero de 2000
+        newFrom = new Date(2000, 0, 1)
+        newFrom.setHours(0, 0, 0, 0)
+        break
       case "today":
         newFrom = new Date(today)
         break
@@ -264,6 +269,15 @@ export function DateRangeSelector({
           <div className="mb-4 space-y-2">
             <div className="text-xs font-semibold text-gray-600 mb-2">Períodos rápidos</div>
             <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => quickSelect("allTime")}
+                className="text-xs font-semibold"
+              >
+                📅 Todo el historial
+              </Button>
               <Button
                 type="button"
                 variant="outline"
