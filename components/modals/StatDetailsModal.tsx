@@ -14,6 +14,7 @@ interface StatDetailsModalProps {
   companyId: string
   type: "sales" | "cash" | "purchases" | "credit" | "units" | "average" | "cashflow" | "profit" | "all"
   dateRange?: { from: Date; to: Date }
+  warehouseIds?: string[]
 }
 
 export function StatDetailsModal({
@@ -22,7 +23,8 @@ export function StatDetailsModal({
   title,
   companyId,
   type,
-  dateRange
+  dateRange,
+  warehouseIds = []
 }: StatDetailsModalProps) {
   const [movements, setMovements] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -32,7 +34,7 @@ export function StatDetailsModal({
     if (open && companyId) {
       fetchMovements()
     }
-  }, [open, companyId, type, dateRange])
+  }, [open, companyId, type, dateRange, warehouseIds])
 
   const fetchMovements = async () => {
     if (!companyId) return
@@ -51,6 +53,11 @@ export function StatDetailsModal({
         from: from.toISOString(),
         to: to.toISOString()
       })
+
+      // Agregar filtro de bodegas si se proporcionan
+      if (warehouseIds.length > 0) {
+        params.append("warehouseIds", warehouseIds.join(","))
+      }
 
       // Para flujo de caja y "all", necesitamos ambos tipos
       if (type === "cashflow" || type === "all") {

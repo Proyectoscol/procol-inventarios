@@ -14,6 +14,7 @@ export async function GET(req: NextRequest) {
     const companyId = searchParams.get("companyId")
     const from = searchParams.get("from")
     const to = searchParams.get("to")
+    const warehouseIds = searchParams.get("warehouseIds")
     
     if (!companyId) {
       return NextResponse.json({ error: "companyId requerido" }, { status: 400 })
@@ -29,6 +30,14 @@ export async function GET(req: NextRequest) {
       whereClause.movementDate = {
         gte: new Date(from),
         lte: new Date(to)
+      }
+    }
+    
+    // Filtrar por bodegas si se proporcionan
+    if (warehouseIds) {
+      const ids = warehouseIds.split(",").filter(Boolean)
+      if (ids.length > 0) {
+        whereClause.warehouseId = { in: ids }
       }
     }
     

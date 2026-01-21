@@ -15,6 +15,7 @@ export async function GET(req: NextRequest) {
     const companyId = searchParams.get("companyId")
     const year = searchParams.get("year")
     const month = searchParams.get("month")
+    const warehouseIds = searchParams.get("warehouseIds")
     
     if (!companyId || !year || !month) {
       return NextResponse.json({ error: "companyId, year y month requeridos" }, { status: 400 })
@@ -28,15 +29,25 @@ export async function GET(req: NextRequest) {
     const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate()
     const endDate = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, lastDay + 1, 4, 59, 59, 999))
 
+    const whereClause: any = {
+      product: { companyId },
+      movementDate: {
+        gte: startDate,
+        lte: endDate
+      }
+    }
+
+    // Filtrar por bodegas si se proporcionan
+    if (warehouseIds) {
+      const ids = warehouseIds.split(",").filter(Boolean)
+      if (ids.length > 0) {
+        whereClause.warehouseId = { in: ids }
+      }
+    }
+
     // Obtener todos los movimientos del mes
     const movements = await prisma.movement.findMany({
-      where: {
-        product: { companyId },
-        movementDate: {
-          gte: startDate,
-          lte: endDate
-        }
-      },
+      where: whereClause,
       select: {
         movementDate: true,
         type: true

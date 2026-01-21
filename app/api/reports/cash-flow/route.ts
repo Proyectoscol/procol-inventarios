@@ -14,28 +14,39 @@ export async function GET(req: NextRequest) {
     const companyId = searchParams.get("companyId")
     const from = searchParams.get("from")
     const to = searchParams.get("to")
+    const warehouseIds = searchParams.get("warehouseIds")
     
     if (!companyId) {
       return NextResponse.json({ error: "companyId requerido" }, { status: 400 })
     }
     
-    const whereClause: any = {
+    const baseWhereClause: any = {
       product: { companyId }
     }
     
     if (from && to) {
-      whereClause.movementDate = {
+      baseWhereClause.movementDate = {
         gte: new Date(from),
         lte: new Date(to)
       }
     }
+    
+    // Filtrar por bodegas si se proporcionan
+    if (warehouseIds) {
+      const ids = warehouseIds.split(",").filter(Boolean)
+      if (ids.length > 0) {
+        baseWhereClause.warehouseId = { in: ids }
+      }
+    }
+    
+    const whereClause = baseWhereClause
     
     // Obtener movimientos para cálculo manual
     const salesMovements = await prisma.movement.findMany({
       where: {
         ...whereClause,
         type: "sale"
-      },
+      } as any,
       select: {
         paymentType: true,
         cashAmount: true,
@@ -50,7 +61,7 @@ export async function GET(req: NextRequest) {
       where: {
         ...whereClause,
         type: "purchase"
-      },
+      } as any,
       select: {
         paymentType: true,
         cashAmount: true,

@@ -7,10 +7,11 @@ import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-reac
 
 interface MovementCalendarProps {
   companyId: string
+  warehouseIds?: string[]
   onDateSelect: (date: Date) => void
 }
 
-export function MovementCalendar({ companyId, onDateSelect }: MovementCalendarProps) {
+export function MovementCalendar({ companyId, warehouseIds = [], onDateSelect }: MovementCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [daysWithActivity, setDaysWithActivity] = useState<Set<number>>(new Set())
   const [loading, setLoading] = useState(false)
@@ -20,15 +21,18 @@ export function MovementCalendar({ companyId, onDateSelect }: MovementCalendarPr
 
   useEffect(() => {
     fetchActivityDays()
-  }, [year, month, companyId])
+  }, [year, month, companyId, warehouseIds])
 
   const fetchActivityDays = async () => {
     if (!companyId) return
     
     setLoading(true)
     try {
+      const warehouseParams = warehouseIds.length > 0 
+        ? `&warehouseIds=${warehouseIds.join(",")}`
+        : ""
       const res = await fetch(
-        `/api/movements/calendar?companyId=${companyId}&year=${year}&month=${month + 1}`
+        `/api/movements/calendar?companyId=${companyId}&year=${year}&month=${month + 1}${warehouseParams}`
       )
       if (res.ok) {
         const data = await res.json()

@@ -347,14 +347,18 @@ export function SaleForm({ companyId, warehouses, customers: initialCustomers = 
         movements.push(result)
       }
 
-      toast.success("✅ Venta registrada exitosamente", {
-        description: `${productItems.length} producto(s) vendido(s)`,
-        duration: 3000
-      })
-      
-      setTimeout(() => {
-        onSuccess?.()
-      }, 500)
+      // Redirigir a página de éxito con el ID del primer movimiento
+      if (movements.length > 0 && movements[0].id) {
+        window.location.href = `/dashboard/movements/sale/success/${movements[0].id}`
+      } else {
+        toast.success("✅ Venta registrada exitosamente", {
+          description: `${productItems.length} producto(s) vendido(s)`,
+          duration: 3000
+        })
+        setTimeout(() => {
+          onSuccess?.()
+        }, 500)
+      }
     } catch (error: any) {
       toast.error("❌ Error al registrar venta", {
         description: error.message || "Por favor, intenta nuevamente",
@@ -422,7 +426,7 @@ export function SaleForm({ companyId, warehouses, customers: initialCustomers = 
       {customerId && (
         <div>
           <div className="flex justify-between items-center mb-2">
-            <Label>Agregar Producto</Label>
+            <Label>Producto*</Label>
             <Button
               type="button"
               variant="outline"
@@ -520,9 +524,8 @@ export function SaleForm({ companyId, warehouses, customers: initialCustomers = 
             <div className="mt-4 pt-4 border-t">
               <Button
                 type="button"
-                variant="outline"
                 onClick={handleAddAnotherProduct}
-                className="w-full"
+                className="w-full bg-green-600 hover:bg-green-700 text-white"
               >
                 <Package className="h-4 w-4 mr-2" />
                 Añadir otro producto

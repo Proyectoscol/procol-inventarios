@@ -4,18 +4,25 @@ import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { BackButton } from "@/components/shared/BackButton"
 import { MovementCalendar } from "@/components/calendar/MovementCalendar"
 import { DayDetailsModal } from "@/components/calendar/DayDetailsModal"
 import { StatDetailsModal } from "@/components/modals/StatDetailsModal"
+import { ProductDetailsModal } from "@/components/modals/ProductDetailsModal"
+import { Warehouse } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 export default function StatsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [stats, setStats] = useState<any>(null)
   const [companyId, setCompanyId] = useState<string>("")
+  const [warehouses, setWarehouses] = useState<any[]>([])
+  const [selectedWarehouseIds, setSelectedWarehouseIds] = useState<Set<string>>(new Set())
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedStat, setSelectedStat] = useState<{ type: string; title: string } | null>(null)
+  const [selectedProduct, setSelectedProduct] = useState<{ id: string; name: string } | null>(null)
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -30,36 +37,88 @@ export default function StatsPage() {
         .then(data => {
           if (data.length > 0) {
             setCompanyId(data[0].id)
-            fetchStats(data[0].id)
+            fetchWarehouses(data[0].id)
           }
         })
     }
   }, [session])
 
-  const fetchStats = async (compId: string) => {
+  const fetchWarehouses = async (compId: string) => {
+    try {
+      const res = await fetch(`/api/companies/${compId}/warehouses`)
+      if (res.ok) {
+        const data = await res.json()
+        setWarehouses(data)
+        // Seleccionar todas las bodegas por defecto
+        const allIds = new Set(data.map((w: any) => w.id))
+        setSelectedWarehouseIds(allIds)
+        // Cargar estadísticas con todas las bodegas seleccionadas
+        if (data.length > 0) {
+          fetchStats(compId, Array.from(allIds))
+        } else {
+          // Si no hay bodegas, cargar sin filtro
+          fetchStats(compId, [])
+        }
+      }
+    } catch (error) {
+      console.error("Error cargando bodegas:", error)
+    }
+  }
+
+  const toggleWarehouse = (warehouseId: string) => {
+    setSelectedWarehouseIds(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(warehouseId)) {
+        newSet.delete(warehouseId)
+      } else {
+        newSet.add(warehouseId)
+      }
+      return newSet
+    })
+  }
+
+  const fetchStats = async (compId: string, warehouseIds: string[]) => {
     try {
       const from = new Date()
       from.setMonth(from.getMonth() - 1)
       const to = new Date()
 
-      const [sales, profit, purchases, cashFlow, customers] = await Promise.all([
-        fetch(`/api/reports/sales?companyId=${compId}&from=${from.toISOString()}&to=${to.toISOString()}`)
+      // Construir parámetros de bodegas
+      const warehouseParams = warehouseIds.length > 0 
+        ? `&warehouseIds=${warehouseIds.join(",")}`
+        : ""
+
+      const [sales, profit, purchases, cashFlow, customers, topSales] = await Promise.all([
+        fetch(`/api/reports/sales?companyId=${compId}&from=${from.toISOString()}&to=${to.toISOString()}${warehouseParams}`)
           .then(r => r.json()),
-        fetch(`/api/reports/profit?companyId=${compId}&from=${from.toISOString()}&to=${to.toISOString()}`)
+        fetch(`/api/reports/profit?companyId=${compId}&from=${from.toISOString()}&to=${to.toISOString()}${warehouseParams}`)
           .then(r => r.json()),
-        fetch(`/api/reports/purchases?companyId=${compId}&from=${from.toISOString()}&to=${to.toISOString()}`)
+        fetch(`/api/reports/purchases?companyId=${compId}&from=${from.toISOString()}&to=${to.toISOString()}${warehouseParams}`)
           .then(r => r.json()),
-        fetch(`/api/reports/cash-flow?companyId=${compId}&from=${from.toISOString()}&to=${to.toISOString()}`)
+        fetch(`/api/reports/cash-flow?companyId=${compId}&from=${from.toISOString()}&to=${to.toISOString()}${warehouseParams}`)
           .then(r => r.json()),
-        fetch(`/api/reports/customers?companyId=${compId}&from=${from.toISOString()}&to=${to.toISOString()}`)
+        fetch(`/api/reports/customers?companyId=${compId}&from=${from.toISOString()}&to=${to.toISOString()}${warehouseParams}`)
+          .then(r => r.json()),
+        fetch(`/api/reports/top-sales?companyId=${compId}&from=${from.toISOString()}&to=${to.toISOString()}${warehouseParams}`)
           .then(r => r.json())
       ])
 
-      setStats({ sales, profit, purchases, cashFlow, customers: customers.customers || [], dateRange: { from, to } })
+      setStats({ sales, profit, purchases, cashFlow, customers: customers.customers || [], topSales: topSales.topProducts || [], dateRange: { from, to } })
     } catch (error) {
       console.error("Error cargando estadísticas:", error)
     }
   }
+
+  // Recargar estadísticas cuando cambien las bodegas seleccionadas (solo si ya se cargaron las bodegas)
+  useEffect(() => {
+    if (companyId && warehouses.length > 0) {
+      const selectedIds = Array.from(selectedWarehouseIds)
+      if (selectedIds.length > 0) {
+        fetchStats(companyId, selectedIds)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedWarehouseIds])
 
   if (status === "loading" || !stats) {
     return <div className="p-8">Cargando...</div>
@@ -72,6 +131,44 @@ export default function StatsPage() {
       </div>
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold mb-6">Estadísticas y Reportes</h1>
+
+        {/* Filtros de Bodegas */}
+        {warehouses.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Warehouse className="h-5 w-5" />
+                Filtrar por Bodegas
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {warehouses.map((warehouse) => {
+                  const isSelected = selectedWarehouseIds.has(warehouse.id)
+                  return (
+                    <Button
+                      key={warehouse.id}
+                      variant={isSelected ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => toggleWarehouse(warehouse.id)}
+                      className={cn(
+                        "transition-all",
+                        isSelected && "bg-primary text-primary-foreground"
+                      )}
+                    >
+                      {warehouse.name}
+                    </Button>
+                  )
+                })}
+              </div>
+              {selectedWarehouseIds.size === 0 && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  ⚠️ No hay bodegas seleccionadas. Selecciona al menos una para ver estadísticas.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card 
@@ -125,17 +222,67 @@ export default function StatsPage() {
 
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle>🏆 Top 5 Productos por Ganancia</CardTitle>
+            <CardTitle>🏆 Top 5 Productos Más Vendidos</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              {stats.profit.topProducts.slice(0, 5).map((p: any, idx: number) => (
-                <div key={p.productId} className="flex justify-between items-center p-2 border rounded">
-                  <span>{idx + 1}. {p.productName}</span>
-                  <span className="font-bold">${(Number(p.profit) || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</span>
-                </div>
-              ))}
-            </div>
+            {stats.topSales && stats.topSales.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left p-2 sm:p-3 font-semibold">#</th>
+                      <th className="text-left p-2 sm:p-3 font-semibold">Producto</th>
+                      <th className="text-right p-2 sm:p-3 font-semibold">Unidades Vendidas</th>
+                      <th className="text-right p-2 sm:p-3 font-semibold">Stock Actual</th>
+                      <th className="text-right p-2 sm:p-3 font-semibold">Último Precio Compra</th>
+                      <th className="text-right p-2 sm:p-3 font-semibold">Total Vendido</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.topSales.map((product: any, idx: number) => (
+                      <tr 
+                        key={product.productId} 
+                        className="border-b hover:bg-muted/50 cursor-pointer transition-colors"
+                        onClick={() => setSelectedProduct({ id: product.productId, name: product.productName })}
+                      >
+                        <td className="p-2 sm:p-3 font-semibold">{idx + 1}</td>
+                        <td className="p-2 sm:p-3">
+                          <div className="font-medium">{product.productName}</div>
+                        </td>
+                        <td className="text-right p-2 sm:p-3 font-semibold">
+                          {product.totalSold.toLocaleString("es-CO")}
+                        </td>
+                        <td className="text-right p-2 sm:p-3">
+                          <span className={`font-semibold ${
+                            product.currentStock > 0 ? "text-green-600" : "text-red-600"
+                          }`}>
+                            {product.currentStock.toLocaleString("es-CO")}
+                          </span>
+                        </td>
+                        <td className="text-right p-2 sm:p-3">
+                          {product.lastPurchasePrice ? (
+                            <span className="font-semibold text-blue-600">
+                              ${product.lastPurchasePrice.toLocaleString("es-CO")} COP
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">N/A</span>
+                          )}
+                        </td>
+                        <td className="text-right p-2 sm:p-3 font-semibold text-green-600">
+                          ${product.totalRevenue.toLocaleString("es-CO")} COP
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">
+                  No hay datos de ventas disponibles en este período.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -144,6 +291,7 @@ export default function StatsPage() {
           <div className="mb-8 -mx-2 sm:mx-0">
             <MovementCalendar
               companyId={companyId}
+              warehouseIds={Array.from(selectedWarehouseIds)}
               onDateSelect={(date) => setSelectedDate(date)}
             />
           </div>
@@ -395,6 +543,19 @@ export default function StatsPage() {
             companyId={companyId}
             type={selectedStat.type as any}
             dateRange={stats.dateRange}
+            warehouseIds={Array.from(selectedWarehouseIds)}
+          />
+        )}
+
+        {/* Modal de detalles del producto */}
+        {selectedProduct && companyId && (
+          <ProductDetailsModal
+            open={!!selectedProduct}
+            onClose={() => setSelectedProduct(null)}
+            productId={selectedProduct.id}
+            productName={selectedProduct.name}
+            companyId={companyId}
+            warehouseIds={Array.from(selectedWarehouseIds)}
           />
         )}
     </div>

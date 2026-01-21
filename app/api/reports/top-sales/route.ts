@@ -43,98 +43,87 @@ export async function GET(req: NextRequest) {
       }
     }
     
-    // Agregaciones
-    const totals = await prisma.movement.aggregate({
-      where: whereClause,
-      _sum: {
-        totalAmount: true,
-        profit: true,
-        quantity: true
-      }
-    })
-    
-    const totalRevenue = Number(totals._sum.totalAmount || 0)
-    const totalProfit = Number(totals._sum.profit || 0)
-    const totalCost = totalRevenue - totalProfit
-    const margin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0
-    
-    // Top productos por ganancia
+    // Top productos por cantidad vendida
     const topProducts = await prisma.movement.groupBy({
       by: ["productId"],
       where: whereClause,
       _sum: {
-        profit: true,
-        quantity: true
+        quantity: true,
+        totalAmount: true
       },
       orderBy: {
         _sum: {
-          profit: "desc"
+          quantity: "desc"
         }
       },
-      take: 10
+      take: 5
     })
     
-    // Enriquecer con datos del producto (solo activos)
+    // Enriquecer con datos del producto, stock actual y último precio de compra
     const enrichedTop = await Promise.all(
       topProducts.map(async (item) => {
         const product = await prisma.product.findFirst({
           where: { 
             id: item.productId,
-            deletedAt: null // Solo productos activos
+            deletedAt: null
+          },
+          include: {
+            stock: {
+              include: {
+                warehouse: true
+              }
+            }
           }
         })
+        
+        if (!product) {
+          return null
+        }
+        
+        // Calcular stock total en todas las bodegas
+        const totalStock = product.stock.reduce((sum, s) => sum + s.quantity, 0)
+        
+        // Obtener último precio de compra (de cualquier bodega, o específico si es necesario)
+        const lastPurchase = await prisma.movement.findFirst({
+          where: {
+            productId: item.productId,
+            type: "purchase"
+          },
+          orderBy: {
+            movementDate: "desc"
+          },
+          select: {
+            unitPrice: true,
+            movementDate: true,
+            warehouseId: true
+          }
+        })
+        
         return {
           productId: item.productId,
-          productName: product?.name || "Desconocido",
-          profit: Number(item._sum.profit || 0),
-          quantity: item._sum.quantity || 0
+          productName: product.name,
+          totalSold: item._sum.quantity || 0,
+          totalRevenue: Number(item._sum.totalAmount || 0),
+          currentStock: totalStock,
+          lastPurchasePrice: lastPurchase ? Number(lastPurchase.unitPrice) : null,
+          lastPurchaseDate: lastPurchase?.movementDate || null
         }
       })
     )
     
-    // Top bodegas por ganancia
-    const topWarehouses = await prisma.movement.groupBy({
-      by: ["warehouseId"],
-      where: whereClause,
-      _sum: {
-        profit: true,
-        totalAmount: true
-      },
-      orderBy: {
-        _sum: {
-          profit: "desc"
-        }
-      }
-    })
-    
-    const enrichedWarehouses = await Promise.all(
-      topWarehouses.map(async (item) => {
-        const warehouse = await prisma.warehouse.findUnique({
-          where: { id: item.warehouseId }
-        })
-        return {
-          warehouseId: item.warehouseId,
-          warehouseName: warehouse?.name || "Desconocida",
-          profit: Number(item._sum.profit || 0),
-          revenue: Number(item._sum.totalAmount || 0)
-        }
-      })
-    )
+    // Filtrar nulls y ordenar por cantidad vendida
+    const filteredTop = enrichedTop
+      .filter((item): item is NonNullable<typeof item> => item !== null)
+      .sort((a, b) => b.totalSold - a.totalSold)
     
     return NextResponse.json({
-      totalRevenue,
-      totalCost,
-      netProfit: totalProfit,
-      margin,
-      topProducts: enrichedTop,
-      topWarehouses: enrichedWarehouses
+      topProducts: filteredTop
     })
   } catch (error: any) {
-    console.error("Error en reporte de utilidad:", error)
+    console.error("Error obteniendo top productos por ventas:", error)
     return NextResponse.json(
-      { error: error.message },
+      { error: error.message || "Error obteniendo top productos" },
       { status: 500 }
     )
   }
 }
-

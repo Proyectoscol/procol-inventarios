@@ -15,6 +15,7 @@ export async function GET(req: NextRequest) {
     const from = searchParams.get("from")
     const to = searchParams.get("to")
     const warehouseId = searchParams.get("warehouseId")
+    const warehouseIds = searchParams.get("warehouseIds")
     const productId = searchParams.get("productId")
     const customerId = searchParams.get("customerId")
     
@@ -34,7 +35,16 @@ export async function GET(req: NextRequest) {
       }
     }
     
-    if (warehouseId) whereClause.warehouseId = warehouseId
+    // Soporte para múltiples bodegas (nuevo) o una sola bodega (legacy)
+    if (warehouseIds) {
+      const ids = warehouseIds.split(",").filter(Boolean)
+      if (ids.length > 0) {
+        whereClause.warehouseId = { in: ids }
+      }
+    } else if (warehouseId) {
+      whereClause.warehouseId = warehouseId
+    }
+    
     if (productId) whereClause.productId = productId
     if (customerId) whereClause.customerId = customerId
     
