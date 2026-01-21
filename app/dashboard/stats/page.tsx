@@ -10,9 +10,10 @@ import { MovementCalendar } from "@/components/calendar/MovementCalendar"
 import { DayDetailsModal } from "@/components/calendar/DayDetailsModal"
 import { StatDetailsModal } from "@/components/modals/StatDetailsModal"
 import { ProductDetailsModal } from "@/components/modals/ProductDetailsModal"
-import { Warehouse } from "lucide-react"
+import { Warehouse, Calendar } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useCompany } from "@/contexts/CompanyContext"
+import { DateRangeSelector } from "@/components/shared/DateRangeSelector"
 
 export default function StatsPage() {
   const { data: session, status } = useSession()
@@ -24,6 +25,16 @@ export default function StatsPage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedStat, setSelectedStat] = useState<{ type: string; title: string } | null>(null)
   const [selectedProduct, setSelectedProduct] = useState<{ id: string; name: string } | null>(null)
+  
+  // Estado para el rango de fechas
+  const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>(() => {
+    const to = new Date()
+    to.setHours(23, 59, 59, 999)
+    const from = new Date()
+    from.setMonth(from.getMonth() - 1)
+    from.setHours(0, 0, 0, 0)
+    return { from, to }
+  })
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -71,11 +82,13 @@ export default function StatsPage() {
     })
   }
 
-  const fetchStats = async (compId: string, warehouseIds: string[]) => {
+  const fetchStats = async (compId: string, warehouseIds: string[], dateRangeToUse?: { from: Date; to: Date }) => {
     try {
-      const from = new Date()
-      from.setMonth(from.getMonth() - 1)
-      const to = new Date()
+      const range = dateRangeToUse || dateRange
+      const from = new Date(range.from)
+      from.setHours(0, 0, 0, 0)
+      const to = new Date(range.to)
+      to.setHours(23, 59, 59, 999)
 
       // Construir parámetros de bodegas
       const warehouseParams = warehouseIds.length > 0 
@@ -103,7 +116,11 @@ export default function StatsPage() {
     }
   }
 
-  // Recargar estadísticas cuando cambien las bodegas seleccionadas (solo si ya se cargaron las bodegas)
+  const handleDateRangeChange = (from: Date, to: Date) => {
+    setDateRange({ from, to })
+  }
+
+  // Recargar estadísticas cuando cambien las bodegas seleccionadas o el rango de fechas
   useEffect(() => {
     if (selectedCompanyId && warehouses.length > 0) {
       const selectedIds = Array.from(selectedWarehouseIds)
@@ -112,7 +129,7 @@ export default function StatsPage() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedWarehouseIds, selectedCompanyId])
+  }, [selectedWarehouseIds, selectedCompanyId, dateRange])
 
   if (status === "loading" || !stats) {
     return <div className="p-8">Cargando...</div>
@@ -126,43 +143,66 @@ export default function StatsPage() {
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold mb-6">Estadísticas y Reportes</h1>
 
-        {/* Filtros de Bodegas */}
-        {warehouses.length > 0 && (
-          <Card className="mb-6">
+        {/* Filtros de Bodegas y Fechas */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {/* Filtros de Bodegas */}
+          {warehouses.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Warehouse className="h-5 w-5" />
+                  Filtrar por Bodegas
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {warehouses.map((warehouse) => {
+                    const isSelected = selectedWarehouseIds.has(warehouse.id)
+                    return (
+                      <Button
+                        key={warehouse.id}
+                        variant={isSelected ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => toggleWarehouse(warehouse.id)}
+                        className={cn(
+                          "transition-all",
+                          isSelected && "bg-primary text-primary-foreground"
+                        )}
+                      >
+                        {warehouse.name}
+                      </Button>
+                    )
+                  })}
+                </div>
+                {selectedWarehouseIds.size === 0 && (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    ⚠️ No hay bodegas seleccionadas. Selecciona al menos una para ver estadísticas.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Filtros de Fecha */}
+          <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
-                <Warehouse className="h-5 w-5" />
-                Filtrar por Bodegas
+                <Calendar className="h-5 w-5" />
+                Filtrar por Período
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {warehouses.map((warehouse) => {
-                  const isSelected = selectedWarehouseIds.has(warehouse.id)
-                  return (
-                    <Button
-                      key={warehouse.id}
-                      variant={isSelected ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => toggleWarehouse(warehouse.id)}
-                      className={cn(
-                        "transition-all",
-                        isSelected && "bg-primary text-primary-foreground"
-                      )}
-                    >
-                      {warehouse.name}
-                    </Button>
-                  )
-                })}
-              </div>
-              {selectedWarehouseIds.size === 0 && (
-                <p className="text-sm text-muted-foreground mt-2">
-                  ⚠️ No hay bodegas seleccionadas. Selecciona al menos una para ver estadísticas.
-                </p>
-              )}
+              <DateRangeSelector
+                from={dateRange.from}
+                to={dateRange.to}
+                onChange={handleDateRangeChange}
+              />
+              <p className="text-sm text-muted-foreground mt-3">
+                Selecciona un rango de fechas para ver las estadísticas del período
+              </p>
             </CardContent>
           </Card>
-        )}
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card 
