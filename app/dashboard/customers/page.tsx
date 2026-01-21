@@ -12,6 +12,7 @@ import { toast } from "sonner"
 import { User, DollarSign, Search, ArrowUpDown, Calendar, TrendingUp } from "lucide-react"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
 import { formatColombiaDate } from "@/lib/date-utils"
 
