@@ -206,18 +206,14 @@ export default function InventoryPage() {
   }
 
   const applyFiltersAndSort = (productsList: any[], query: string, sort: string, warehouseId: string) => {
-    // Filtrar por búsqueda (solo si hay más de 2 caracteres)
-    let filtered = productsList
-    if (query.length >= 2) {
-      const queryLower = query.toLowerCase()
-      filtered = productsList.filter((product) => {
-        const nameMatch = product.name?.toLowerCase().includes(queryLower)
-        // Buscar por nombre (que es lo que tenemos, no hay campo "referencia" separado)
-        return nameMatch
-      })
-    }
+    // Primero filtrar por bodega seleccionada - solo productos que tienen stock en esta bodega
+    let filtered = productsList.filter((product: any) => {
+      const stock = product.stock?.find((s: any) => s.warehouseId === warehouseId)
+      // Mostrar productos que tienen stock en esta bodega (incluso si es 0)
+      return stock !== undefined
+    })
 
-    // Filtrar por bodega seleccionada
+    // Agregar currentStock a cada producto
     filtered = filtered.map((product: any) => {
       const stock = product.stock?.find((s: any) => s.warehouseId === warehouseId)
       return {
@@ -225,6 +221,16 @@ export default function InventoryPage() {
         currentStock: stock?.quantity ?? 0
       }
     })
+
+    // Filtrar por búsqueda (solo si hay más de 2 caracteres)
+    if (query.length >= 2) {
+      const queryLower = query.toLowerCase()
+      filtered = filtered.filter((product) => {
+        const nameMatch = product.name?.toLowerCase().includes(queryLower)
+        // Buscar por nombre (que es lo que tenemos, no hay campo "referencia" separado)
+        return nameMatch
+      })
+    }
 
     // Ordenar
     let sorted = [...filtered]
