@@ -17,7 +17,6 @@ export default function StatsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [stats, setStats] = useState<any>(null)
-  const [companyId, setCompanyId] = useState<string>("")
   const [warehouses, setWarehouses] = useState<any[]>([])
   const [selectedWarehouseIds, setSelectedWarehouseIds] = useState<Set<string>>(new Set())
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
@@ -111,14 +110,14 @@ export default function StatsPage() {
 
   // Recargar estadísticas cuando cambien las bodegas seleccionadas (solo si ya se cargaron las bodegas)
   useEffect(() => {
-    if (companyId && warehouses.length > 0) {
+    if (selectedCompanyId && warehouses.length > 0) {
       const selectedIds = Array.from(selectedWarehouseIds)
       if (selectedIds.length > 0) {
-        fetchStats(companyId, selectedIds)
+        fetchStats(selectedCompanyId, selectedIds)
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedWarehouseIds])
+  }, [selectedWarehouseIds, selectedCompanyId])
 
   if (status === "loading" || !stats) {
     return <div className="p-8">Cargando...</div>
@@ -287,10 +286,10 @@ export default function StatsPage() {
         </Card>
 
         {/* Calendario de Movimientos */}
-        {companyId && (
+        {selectedCompanyId && (
           <div className="mb-8 -mx-2 sm:mx-0">
             <MovementCalendar
-              companyId={companyId}
+              companyId={selectedCompanyId}
               warehouseIds={Array.from(selectedWarehouseIds)}
               onDateSelect={(date) => setSelectedDate(date)}
             />
@@ -526,21 +525,21 @@ export default function StatsPage() {
         </div>
 
         {/* Modal de detalles del día */}
-        {selectedDate && companyId && (
+        {selectedDate && selectedCompanyId && (
           <DayDetailsModal
             date={selectedDate}
-            companyId={companyId}
+            companyId={selectedCompanyId}
             onClose={() => setSelectedDate(null)}
           />
         )}
 
         {/* Modal de detalles de estadísticas */}
-        {selectedStat && companyId && stats?.dateRange && (
+        {selectedStat && selectedCompanyId && stats?.dateRange && (
           <StatDetailsModal
             open={!!selectedStat}
             onClose={() => setSelectedStat(null)}
             title={selectedStat.title}
-            companyId={companyId}
+            companyId={selectedCompanyId}
             type={selectedStat.type as any}
             dateRange={stats.dateRange}
             warehouseIds={Array.from(selectedWarehouseIds)}
@@ -548,13 +547,13 @@ export default function StatsPage() {
         )}
 
         {/* Modal de detalles del producto */}
-        {selectedProduct && companyId && (
+        {selectedProduct && selectedCompanyId && (
           <ProductDetailsModal
             open={!!selectedProduct}
             onClose={() => setSelectedProduct(null)}
             productId={selectedProduct.id}
             productName={selectedProduct.name}
-            companyId={companyId}
+            companyId={selectedCompanyId}
             warehouseIds={Array.from(selectedWarehouseIds)}
           />
         )}

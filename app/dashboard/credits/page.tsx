@@ -10,12 +10,12 @@ import { toast } from "sonner"
 import { Calendar, DollarSign, AlertTriangle, CheckCircle, Clock } from "lucide-react"
 import { formatColombiaDate, formatColombiaTime } from "@/lib/date-utils"
 import { CreditPaymentModal } from "@/components/modals/CreditPaymentModal"
+import { useCompany } from "@/contexts/CompanyContext"
 
 export default function CreditsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const [companies, setCompanies] = useState<any[]>([])
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string>("")
+  const { selectedCompanyId } = useCompany()
   const [credits, setCredits] = useState<any[]>([])
   const [summary, setSummary] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -43,33 +43,10 @@ export default function CreditsPage() {
   }, [status, router])
 
   useEffect(() => {
-    if (session) {
-      fetchCompanies()
-    }
-  }, [session])
-
-  useEffect(() => {
     if (selectedCompanyId) {
       fetchCredits(selectedCompanyId, statusFilter)
     }
   }, [selectedCompanyId, statusFilter])
-
-  const fetchCompanies = async () => {
-    try {
-      const res = await fetch("/api/companies")
-      if (res.ok) {
-        const data = await res.json()
-        setCompanies(data)
-        if (data.length > 0 && !selectedCompanyId) {
-          setSelectedCompanyId(data[0].id)
-        }
-      }
-    } catch (error) {
-      console.error("Error cargando compañías:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const fetchCredits = async (companyId: string, status: string) => {
     try {
@@ -103,7 +80,7 @@ export default function CreditsPage() {
     return null
   }
 
-  if (companies.length === 0) {
+  if (!selectedCompanyId) {
     return (
       <div className="p-8">
         <div className="max-w-4xl mx-auto">
@@ -116,11 +93,8 @@ export default function CreditsPage() {
             </CardHeader>
             <CardContent>
               <p className="mb-4">
-                Primero necesitas crear una compañía para poder gestionar créditos.
+                Por favor selecciona una compañía en el header para gestionar créditos.
               </p>
-              <Button onClick={() => router.push("/dashboard/settings/companies")}>
-                Crear Compañía
-              </Button>
             </CardContent>
           </Card>
         </div>
@@ -143,30 +117,6 @@ export default function CreditsPage() {
           </div>
         </div>
 
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Seleccionar Compañía</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <label htmlFor="company" className="text-sm font-medium">
-                Compañía
-              </label>
-              <select
-                id="company"
-                value={selectedCompanyId}
-                onChange={(e) => setSelectedCompanyId(e.target.value)}
-                className="w-full p-2 border rounded-md text-base"
-              >
-                {companies.map((company) => (
-                  <option key={company.id} value={company.id}>
-                    {company.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </CardContent>
-        </Card>
 
         {summary && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">

@@ -4,22 +4,28 @@ import { useSession } from "next-auth/react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { Select } from "@/components/ui/select"
 import { 
   Package, 
   Settings, 
   Home,
   Menu,
   X,
-  User,
-  Receipt
+  Receipt,
+  Building2,
+  User
 } from "lucide-react"
 import { useState } from "react"
+import { useCompany } from "@/contexts/CompanyContext"
 
 export function DashboardHeader() {
   const { data: session } = useSession()
   const router = useRouter()
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { selectedCompanyId, setSelectedCompanyId, companies, loading } = useCompany()
+  
+  const selectedCompany = companies.find(c => c.id === selectedCompanyId)
 
   const navigation = [
     { name: "Dashboard", href: "/dashboard", icon: Home },
@@ -78,31 +84,51 @@ export function DashboardHeader() {
               })}
             </nav>
 
-            {/* User menu - Desktop */}
+            {/* Company selector - Desktop */}
             <div className="hidden md:flex items-center space-x-3">
-              <div className="flex items-center space-x-2 px-3 py-1.5 rounded-md bg-gray-50">
-                <User className="h-4 w-4 text-gray-600" />
-                <span className="text-sm font-medium text-gray-700">
-                  {session?.user?.name}
-                </span>
-              </div>
+              {!loading && companies.length > 0 && (
+                <div className="flex items-center space-x-2">
+                  <Building2 className="h-4 w-4 text-gray-600 flex-shrink-0" />
+                  <Select
+                    value={selectedCompanyId || ""}
+                    onChange={(e) => setSelectedCompanyId(e.target.value)}
+                    className="min-w-[180px] max-w-[250px] text-sm"
+                  >
+                    {companies.map((company) => (
+                      <option key={company.id} value={company.id}>
+                        {company.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              )}
             </div>
 
-            {/* Mobile: User and menu button */}
-            <div className="md:hidden flex items-center space-x-3">
-              <div className="flex items-center space-x-2 px-2 py-1 rounded-md bg-gray-50">
-                <User className="h-4 w-4 text-gray-600" />
-                <span className="text-sm text-gray-700 truncate max-w-[100px]">
-                  {session?.user?.name}
-                </span>
-              </div>
+            {/* Mobile: Company selector and menu button */}
+            <div className="md:hidden flex items-center space-x-2 flex-1 min-w-0">
+              {!loading && companies.length > 0 && (
+                <div className="flex items-center space-x-1 flex-1 min-w-0">
+                  <Building2 className="h-3 w-3 text-gray-600 flex-shrink-0" />
+                  <Select
+                    value={selectedCompanyId || ""}
+                    onChange={(e) => setSelectedCompanyId(e.target.value)}
+                    className="text-xs flex-1 min-w-0 py-1 px-2 h-8"
+                  >
+                    {companies.map((company) => (
+                      <option key={company.id} value={company.id}>
+                        {company.name.length > 12 ? `${company.name.substring(0, 12)}...` : company.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="relative z-50"
+                className="relative z-50 flex-shrink-0 h-8 w-8 p-0"
               >
-                {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
               </Button>
             </div>
           </div>

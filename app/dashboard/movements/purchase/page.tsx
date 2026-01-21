@@ -6,12 +6,13 @@ import { useRouter } from "next/navigation"
 import { PurchaseForm } from "@/components/forms/PurchaseForm"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { BackButton } from "@/components/shared/BackButton"
+import { useCompany } from "@/contexts/CompanyContext"
 
 export default function PurchasePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const { selectedCompanyId } = useCompany()
   const [warehouses, setWarehouses] = useState<any[]>([])
-  const [companyId, setCompanyId] = useState<string>("")
   const [preselectedProductId, setPreselectedProductId] = useState<string>("")
   const [preselectedWarehouseId, setPreselectedWarehouseId] = useState<string>("")
 
@@ -33,20 +34,10 @@ export default function PurchasePage() {
   }, [])
 
   useEffect(() => {
-    if (session) {
-      // Por ahora, obtener la primera compañía del usuario
-      // En producción, esto debería venir de un selector de compañía
-      fetch("/api/companies")
-        .then(res => res.json())
-        .then(data => {
-          if (data.length > 0) {
-            const firstCompany = data[0]
-            setCompanyId(firstCompany.id)
-            fetchWarehouses(firstCompany.id)
-          }
-        })
+    if (selectedCompanyId) {
+      fetchWarehouses(selectedCompanyId)
     }
-  }, [session])
+  }, [selectedCompanyId])
 
   const fetchWarehouses = async (compId: string) => {
     try {
@@ -60,8 +51,27 @@ export default function PurchasePage() {
     }
   }
 
-  if (status === "loading" || !companyId) {
+  if (status === "loading" || !selectedCompanyId) {
     return <div className="p-8">Cargando...</div>
+  }
+
+  if (!selectedCompanyId) {
+    return (
+      <div className="p-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-6">
+            <BackButton href="/dashboard" />
+          </div>
+          <Card>
+            <CardContent className="p-8 text-center">
+              <p className="text-muted-foreground">
+                Por favor selecciona una compañía en el header para realizar una compra.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -82,7 +92,7 @@ export default function PurchasePage() {
           </CardHeader>
           <CardContent>
             <PurchaseForm
-              companyId={companyId}
+              companyId={selectedCompanyId}
               warehouses={warehouses}
               preselectedProductId={preselectedProductId}
               preselectedWarehouseId={preselectedWarehouseId}

@@ -15,16 +15,16 @@ import { EditThresholdModal } from "@/components/modals/EditThresholdModal"
 import { ConfirmDialog } from "@/components/modals/ConfirmDialog"
 import { Edit, Package, Calendar, DollarSign, ShoppingCart, Trash2 } from "lucide-react"
 import { toast } from "sonner"
+import { useCompany } from "@/contexts/CompanyContext"
 
 export default function InventoryPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const { selectedCompanyId } = useCompany()
   const [products, setProducts] = useState<any[]>([])
   const [filteredProducts, setFilteredProducts] = useState<any[]>([])
   const [warehouses, setWarehouses] = useState<any[]>([])
-  const [companies, setCompanies] = useState<any[]>([])
   const [search, setSearch] = useState("")
-  const [companyId, setCompanyId] = useState<string>("")
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("")
   const [sortBy, setSortBy] = useState<"name" | "name-desc" | "stock-high" | "stock-low" | "last-purchase" | "last-sale">("name")
   const [showAddProduct, setShowAddProduct] = useState(false)
@@ -44,29 +44,21 @@ export default function InventoryPage() {
   }, [status, router])
 
   useEffect(() => {
-    if (session) {
-      fetch("/api/companies")
-        .then(res => res.json())
-        .then(data => {
-          if (data.length > 0) {
-            setCompanies(data)
-            setCompanyId(data[0].id)
-            fetchWarehouses(data[0].id)
-          }
-        })
+    if (selectedCompanyId) {
+      fetchWarehouses(selectedCompanyId)
     }
-  }, [session])
+  }, [selectedCompanyId])
 
   useEffect(() => {
-    if (companyId && selectedWarehouseId) {
-      fetchProducts(companyId, selectedWarehouseId)
+    if (selectedCompanyId && selectedWarehouseId) {
+      fetchProducts(selectedCompanyId, selectedWarehouseId)
       fetchInventoryValue(selectedWarehouseId)
     } else {
       // Limpiar productos si no hay bodega seleccionada
       setProducts([])
       setFilteredProducts([])
     }
-  }, [companyId, selectedWarehouseId])
+  }, [selectedCompanyId, selectedWarehouseId])
 
   useEffect(() => {
     if (products.length > 0) {
@@ -349,8 +341,8 @@ export default function InventoryPage() {
       setProductToDelete(null)
 
       // Refrescar lista de productos
-      if (companyId && selectedWarehouseId) {
-        fetchProducts(companyId, selectedWarehouseId)
+      if (selectedCompanyId && selectedWarehouseId) {
+        fetchProducts(selectedCompanyId, selectedWarehouseId)
       }
     } catch (error: any) {
       toast.error("❌ Error al eliminar producto", {
@@ -366,7 +358,7 @@ export default function InventoryPage() {
     return <div className="p-8">Cargando...</div>
   }
 
-  if (!companyId || warehouses.length === 0) {
+  if (!selectedCompanyId) {
     return (
       <div className="p-8">
         <div className="mb-4">
@@ -375,7 +367,24 @@ export default function InventoryPage() {
         <Card>
           <CardContent className="p-8 text-center">
             <p className="text-muted-foreground">
-              Primero necesitas crear una compañía y una bodega para ver el inventario.
+              Por favor selecciona una compañía en el header para ver el inventario.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (warehouses.length === 0) {
+    return (
+      <div className="p-8">
+        <div className="mb-4">
+          <BackButton href="/dashboard" />
+        </div>
+        <Card>
+          <CardContent className="p-8 text-center">
+            <p className="text-muted-foreground">
+              Primero necesitas crear una bodega para ver el inventario.
             </p>
           </CardContent>
         </Card>
@@ -391,46 +400,24 @@ export default function InventoryPage() {
       
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Inventario</h1>
-        {companyId && !showAddProduct && (
+        {selectedCompanyId && !showAddProduct && (
           <Button onClick={() => setShowAddProduct(true)}>+ Agregar Producto</Button>
         )}
       </div>
 
-      {/* Selector de Empresa y Bodega */}
+      {/* Selector de Bodega */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Seleccionar Empresa y Bodega</CardTitle>
+          <CardTitle>Seleccionar Bodega</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            <div>
-              <Label htmlFor="company">Empresa</Label>
-              <Select
-                id="company"
-                value={companyId}
-                onChange={(e) => {
-                  setCompanyId(e.target.value)
-                  setSelectedWarehouseId("")
-                  if (e.target.value) {
-                    fetchWarehouses(e.target.value)
-                  }
-                }}
-              >
-                <option value="">Seleccionar empresa...</option>
-                {companies.map((company) => (
-                  <option key={company.id} value={company.id}>
-                    {company.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
             <div>
               <Label htmlFor="warehouse">Bodega</Label>
               <Select
                 id="warehouse"
                 value={selectedWarehouseId}
                 onChange={(e) => setSelectedWarehouseId(e.target.value)}
-                disabled={!companyId}
               >
                 <option value="">Seleccionar bodega...</option>
                 {warehouses.map((warehouse) => (
@@ -475,7 +462,7 @@ export default function InventoryPage() {
         </CardContent>
       </Card>
 
-      {showAddProduct && companyId && (
+      {showAddProduct && selectedCompanyId && (
         <Card className="mb-6 border-2 border-primary">
           <CardHeader>
             <div className="flex justify-between items-center">
@@ -491,11 +478,11 @@ export default function InventoryPage() {
           </CardHeader>
           <CardContent>
             <ProductForm
-              companyId={companyId}
+              companyId={selectedCompanyId}
               onSuccess={() => {
                 setShowAddProduct(false)
-                if (companyId && selectedWarehouseId) {
-                  fetchProducts(companyId, selectedWarehouseId)
+                if (selectedCompanyId && selectedWarehouseId) {
+                  fetchProducts(selectedCompanyId, selectedWarehouseId)
                 }
               }}
               onCancel={() => setShowAddProduct(false)}
@@ -690,12 +677,13 @@ export default function InventoryPage() {
       {editingProduct && (
         <EditProductModal
           product={editingProduct}
-          companyId={companyId}
+          companyId={selectedCompanyId || ""}
+          warehouses={warehouses}
           open={!!editingProduct}
           onClose={() => setEditingProduct(null)}
           onSuccess={() => {
-            if (companyId && selectedWarehouseId) {
-              fetchProducts(companyId, selectedWarehouseId)
+            if (selectedCompanyId && selectedWarehouseId) {
+              fetchProducts(selectedCompanyId, selectedWarehouseId)
             }
           }}
         />
@@ -709,8 +697,8 @@ export default function InventoryPage() {
           open={!!editingThreshold}
           onClose={() => setEditingThreshold(null)}
           onSuccess={() => {
-            if (companyId && selectedWarehouseId) {
-              fetchProducts(companyId, selectedWarehouseId)
+            if (selectedCompanyId && selectedWarehouseId) {
+              fetchProducts(selectedCompanyId, selectedWarehouseId)
             }
           }}
         />

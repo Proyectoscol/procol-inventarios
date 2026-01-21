@@ -15,12 +15,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
 import { formatColombiaDate } from "@/lib/date-utils"
+import { useCompany } from "@/contexts/CompanyContext"
 
 export default function CustomersPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const [companies, setCompanies] = useState<any[]>([])
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string>("")
+  const { selectedCompanyId } = useCompany()
   const [customers, setCustomers] = useState<any[]>([])
   const [filteredCustomers, setFilteredCustomers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -36,33 +36,10 @@ export default function CustomersPage() {
   }, [status, router])
 
   useEffect(() => {
-    if (session) {
-      fetchCompanies()
-    }
-  }, [session])
-
-  useEffect(() => {
     if (selectedCompanyId) {
       fetchCustomers(selectedCompanyId)
     }
   }, [selectedCompanyId])
-
-  const fetchCompanies = async () => {
-    try {
-      const res = await fetch("/api/companies")
-      if (res.ok) {
-        const data = await res.json()
-        setCompanies(data)
-        if (data.length > 0 && !selectedCompanyId) {
-          setSelectedCompanyId(data[0].id)
-        }
-      }
-    } catch (error) {
-      console.error("Error cargando compañías:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const fetchCustomers = async (companyId: string) => {
     try {
@@ -193,7 +170,7 @@ export default function CustomersPage() {
     return null
   }
 
-  if (companies.length === 0) {
+  if (!selectedCompanyId) {
     return (
       <div className="p-8">
         <div className="max-w-4xl mx-auto">
@@ -206,11 +183,8 @@ export default function CustomersPage() {
             </CardHeader>
             <CardContent>
               <p className="mb-4">
-                Primero necesitas crear una compañía para poder gestionar clientes.
+                Por favor selecciona una compañía en el header para gestionar clientes.
               </p>
-              <Button onClick={() => router.push("/dashboard/settings/companies")}>
-                Crear Compañía
-              </Button>
             </CardContent>
           </Card>
         </div>
@@ -254,32 +228,7 @@ export default function CustomersPage() {
           )}
         </div>
 
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Seleccionar Compañía</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <label htmlFor="company" className="text-sm font-medium">
-                Compañía
-              </label>
-              <select
-                id="company"
-                value={selectedCompanyId}
-                onChange={(e) => setSelectedCompanyId(e.target.value)}
-                className="w-full p-2 border rounded-md"
-              >
-                {companies.map((company) => (
-                  <option key={company.id} value={company.id}>
-                    {company.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </CardContent>
-        </Card>
-
-        {showCreateCustomer && selectedCompanyId && (
+        {showCreateCustomer && (
           <Card className="mb-6 border-2 border-primary">
             <CardHeader>
               <div className="flex justify-between items-center">
@@ -316,7 +265,7 @@ export default function CustomersPage() {
         <Card>
           <CardHeader>
             <CardTitle>
-              Clientes de {companies.find(c => c.id === selectedCompanyId)?.name || "Compañía"} ({filteredCustomers.length})
+              Clientes ({filteredCustomers.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
