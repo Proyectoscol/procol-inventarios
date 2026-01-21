@@ -139,7 +139,7 @@ export async function GET(
 
     // Headers de tabla
     doc.setFontSize(10)
-    doc.setFont(undefined, 'bold')
+    doc.setFont('helvetica', 'bold')
     doc.text('Producto', 20, yPosition)
     doc.text('Bodega', 70, yPosition)
     doc.text('Cant.', 110, yPosition, { align: 'right' })
@@ -150,7 +150,7 @@ export async function GET(
     yPosition += 5
 
     // Items
-    doc.setFont(undefined, 'normal')
+    doc.setFont('helvetica', 'normal')
     doc.setFontSize(9)
     relatedMovements.forEach((movement) => {
       if (yPosition > 250) {
@@ -190,14 +190,14 @@ export async function GET(
     }
 
     doc.setFontSize(14)
-    doc.setFont(undefined, 'bold')
+    doc.setFont('helvetica', 'bold')
     doc.text('TOTAL:', 150, yPosition, { align: 'right' })
     doc.text(`$${total.toLocaleString('es-CO')}`, 180, yPosition, { align: 'right' })
     yPosition += 12
 
     // Información de pago
     doc.setFontSize(12)
-    doc.setFont(undefined, 'normal')
+    doc.setFont('helvetica', 'normal')
     doc.text('CONDICIONES DE PAGO', 20, yPosition)
     doc.line(20, yPosition + 2, 190, yPosition + 2)
     yPosition += 8
