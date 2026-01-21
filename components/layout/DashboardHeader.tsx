@@ -4,7 +4,6 @@ import { useSession } from "next-auth/react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Select } from "@/components/ui/select"
 import { 
   Package, 
   Settings, 
@@ -12,11 +11,11 @@ import {
   Menu,
   X,
   Receipt,
-  Building2,
   User
 } from "lucide-react"
 import { useState } from "react"
 import { useCompany } from "@/contexts/CompanyContext"
+import { CompanySelector } from "@/components/shared/CompanySelector"
 
 export function DashboardHeader() {
   const { data: session } = useSession()
@@ -85,43 +84,26 @@ export function DashboardHeader() {
             </nav>
 
             {/* Company selector - Desktop */}
-            <div className="hidden md:flex items-center space-x-3">
-              {!loading && companies.length > 0 && (
-                <div className="flex items-center space-x-2">
-                  <Building2 className="h-4 w-4 text-gray-600 flex-shrink-0" />
-                  <Select
-                    value={selectedCompanyId || ""}
-                    onChange={(e) => setSelectedCompanyId(e.target.value)}
-                    className="min-w-[180px] max-w-[250px] text-sm"
-                  >
-                    {companies.map((company) => (
-                      <option key={company.id} value={company.id}>
-                        {company.name}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-              )}
+            <div className="hidden md:flex items-center">
+              <CompanySelector
+                companies={companies}
+                selectedCompanyId={selectedCompanyId}
+                onSelect={setSelectedCompanyId}
+                loading={loading}
+              />
             </div>
 
             {/* Mobile: Company selector and menu button */}
             <div className="md:hidden flex items-center space-x-2 flex-1 min-w-0">
-              {!loading && companies.length > 0 && (
-                <div className="flex items-center space-x-1 flex-1 min-w-0">
-                  <Building2 className="h-3 w-3 text-gray-600 flex-shrink-0" />
-                  <Select
-                    value={selectedCompanyId || ""}
-                    onChange={(e) => setSelectedCompanyId(e.target.value)}
-                    className="text-xs flex-1 min-w-0 py-1 px-2 h-8"
-                  >
-                    {companies.map((company) => (
-                      <option key={company.id} value={company.id}>
-                        {company.name.length > 12 ? `${company.name.substring(0, 12)}...` : company.name}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-              )}
+              <div className="flex-1 min-w-0">
+                <CompanySelector
+                  companies={companies}
+                  selectedCompanyId={selectedCompanyId}
+                  onSelect={setSelectedCompanyId}
+                  loading={loading}
+                  className="w-full"
+                />
+              </div>
               <Button
                 variant="ghost"
                 size="sm"
