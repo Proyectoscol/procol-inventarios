@@ -2,7 +2,7 @@
 
 import { Input } from "@/components/ui/input"
 import { formatCurrency } from "@/lib/utils"
-import { useState, useEffect } from "react"
+import { useState, useEffect, forwardRef } from "react"
 
 interface CurrencyInputProps {
   value: number
@@ -13,14 +13,14 @@ interface CurrencyInputProps {
   onFocus?: () => void
 }
 
-export function CurrencyInput({ 
+export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(({ 
   value, 
   onChange, 
   placeholder,
   disabled = false,
   className,
   onFocus
-}: CurrencyInputProps) {
+}, ref) => {
   // Función para formatear números con coma como separador de miles
   const formatNumber = (num: number): string => {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")
@@ -60,6 +60,7 @@ export function CurrencyInput({
         $
       </span>
       <Input
+        ref={ref}
         type="text"
         inputMode="numeric"
         value={displayValue}
@@ -74,5 +75,7 @@ export function CurrencyInput({
       </span>
     </div>
   )
-}
+})
+
+CurrencyInput.displayName = "CurrencyInput"
 

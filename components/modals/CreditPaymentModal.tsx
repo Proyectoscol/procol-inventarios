@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { X, DollarSign, Calendar, Clock, CheckCircle } from "lucide-react"
 import { CurrencyInput } from "@/components/shared/CurrencyInput"
+import { useRef } from "react"
 import { formatColombiaDate } from "@/lib/date-utils"
 import { toast } from "sonner"
 
@@ -26,15 +27,17 @@ interface CreditPaymentModalProps {
     creditDays?: number | null
   }
   onSuccess: () => void
+  initialPaymentType?: "full" | "partial" // Tipo de pago inicial
 }
 
 export function CreditPaymentModal({
   open,
   onClose,
   credit,
-  onSuccess
+  onSuccess,
+  initialPaymentType = "full"
 }: CreditPaymentModalProps) {
-  const [paymentType, setPaymentType] = useState<"full" | "partial">("full")
+  const [paymentType, setPaymentType] = useState<"full" | "partial">(initialPaymentType)
   const [paymentAmount, setPaymentAmount] = useState<number>(0)
   const [renewCredit, setRenewCredit] = useState(false)
   const [newCreditDays, setNewCreditDays] = useState<number>(15)
@@ -43,6 +46,7 @@ export function CreditPaymentModal({
   const [loading, setLoading] = useState(false)
   const [paymentHistory, setPaymentHistory] = useState<any[]>([])
   const [loadingHistory, setLoadingHistory] = useState(false)
+  const amountInputRef = useRef<HTMLInputElement>(null)
 
   // Calcular saldo pendiente
   const originalCredit = credit.creditAmount
@@ -51,15 +55,29 @@ export function CreditPaymentModal({
 
   useEffect(() => {
     if (open && credit.id) {
+      // Actualizar tipo de pago cuando se abre el modal
+      setPaymentType(initialPaymentType)
       fetchPaymentHistory()
-      // Inicializar con el saldo pendiente si es pago completo
+    }
+  }, [open, credit.id, initialPaymentType])
+
+  useEffect(() => {
+    // Inicializar monto según el tipo de pago
+    if (open) {
       if (paymentType === "full") {
         setPaymentAmount(pendingBalance)
       } else {
         setPaymentAmount(0)
+        // Enfocar el campo de monto después de un pequeño delay para abono parcial
+        setTimeout(() => {
+          if (amountInputRef.current) {
+            amountInputRef.current.focus()
+            amountInputRef.current.select()
+          }
+        }, 150)
       }
     }
-  }, [open, credit.id, paymentType, pendingBalance])
+  }, [open, paymentType, pendingBalance])
 
   const fetchPaymentHistory = async () => {
     try {
@@ -82,6 +100,13 @@ export function CreditPaymentModal({
       setPaymentAmount(pendingBalance)
     } else {
       setPaymentAmount(0)
+      // Enfocar el campo de monto cuando cambia a abono parcial
+      setTimeout(() => {
+        if (amountInputRef.current) {
+          amountInputRef.current.focus()
+          amountInputRef.current.select()
+        }
+      }, 100)
     }
   }
 
@@ -157,7 +182,7 @@ export function CreditPaymentModal({
       onClose()
       
       // Resetear formulario
-      setPaymentType("full")
+      setPaymentType(initialPaymentType)
       setPaymentAmount(0)
       setRenewCredit(false)
       setNewCreditDays(15)
@@ -172,6 +197,18 @@ export function CreditPaymentModal({
       setLoading(false)
     }
   }
+
+  // Resetear cuando se cierra el modal
+  useEffect(() => {
+    if (!open) {
+      setPaymentType(initialPaymentType)
+      setPaymentAmount(0)
+      setRenewCredit(false)
+      setNewCreditDays(15)
+      setCustomCreditDays("")
+      setNotes("")
+    }
+  }, [open, initialPaymentType])
 
   if (!open) return null
 
@@ -279,9 +316,10 @@ export function CreditPaymentModal({
               {paymentType === "full" ? "Monto del Pago" : "Monto del Abono"}
             </Label>
             <CurrencyInput
+              ref={amountInputRef}
               value={paymentAmount}
               onChange={handleAmountChange}
-              placeholder="0"
+              placeholder={paymentType === "partial" ? pendingBalance.toLocaleString("es-CO") : "0"}
               disabled={paymentType === "full"}
             />
             {paymentType === "partial" && paymentAmount > 0 && (

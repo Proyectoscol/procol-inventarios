@@ -362,7 +362,9 @@ export default function CreditsPage() {
                         {!credit.creditPaid && (
                           <div className="flex flex-col gap-2 ml-4">
                             <Button
-                              onClick={() => setSelectedCredit(credit)}
+                              onClick={() => {
+                                setSelectedCredit({ ...credit, _initialPaymentType: "partial" })
+                              }}
                               size="sm"
                               className="w-full"
                             >
@@ -372,8 +374,7 @@ export default function CreditsPage() {
                             {(credit.pendingBalance || credit.creditAmount) > 0 && (
                               <Button
                                 onClick={() => {
-                                  setSelectedCredit(credit)
-                                  // El modal manejará el pago completo
+                                  setSelectedCredit({ ...credit, _initialPaymentType: "full" })
                                 }}
                                 size="sm"
                                 variant="outline"
@@ -417,6 +418,7 @@ export default function CreditsPage() {
             creditDueDate: selectedCredit.creditDueDate,
             creditDays: selectedCredit.creditDays
           }}
+          initialPaymentType={selectedCredit._initialPaymentType || "full"}
           onSuccess={handlePaymentSuccess}
         />
       )}
