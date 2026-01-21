@@ -14,7 +14,8 @@ import {
   Warehouse,
   ArrowRight,
   CheckCircle,
-  Users
+  Users,
+  Receipt
 } from "lucide-react"
 
 export default function DashboardPage() {
@@ -213,8 +214,8 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Inventario, Clientes y Reportes */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Inventario, Clientes, Reportes y Movimientos */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Link href="/dashboard/inventory">
                 <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
                   <CardHeader>
@@ -262,6 +263,24 @@ export default function DashboardPage() {
                         <CardTitle>Reportes y Estadísticas</CardTitle>
                         <CardDescription>
                           Visualiza tus ventas, ganancias y análisis
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                </Card>
+              </Link>
+
+              <Link href="/dashboard/movements">
+                <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+                  <CardHeader>
+                    <div className="flex items-center space-x-3">
+                      <div className="p-3 bg-cyan-100 rounded-lg">
+                        <Receipt className="h-6 w-6 text-cyan-600" />
+                      </div>
+                      <div>
+                        <CardTitle>Movimientos</CardTitle>
+                        <CardDescription>
+                          Ver y gestionar todas tus compras y ventas
                         </CardDescription>
                       </div>
                     </div>
