@@ -74,9 +74,20 @@ export function QuickProductCreationModal({
   const purchaseForm = useForm<Omit<PurchaseFormData, "productId">>({
     resolver: zodResolver(purchaseFormSchema),
     defaultValues: {
-      priceType: "unit"
+      priceType: "unit",
+      warehouseId: ""
     }
   })
+
+  // Sincronizar warehouseId del paso 1 al paso 2 cuando se avanza
+  useEffect(() => {
+    if (step === 2 && createdProductId) {
+      const warehouseId = productForm.getValues("warehouseId")
+      if (warehouseId) {
+        purchaseForm.setValue("warehouseId", warehouseId)
+      }
+    }
+  }, [step, createdProductId, productForm, purchaseForm])
 
   const priceType = purchaseForm.watch("priceType")
   const quantity = purchaseForm.watch("quantity")
@@ -349,14 +360,15 @@ export function QuickProductCreationModal({
             >
               <div>
                 <Label className="text-base">Bodega *</Label>
-                <Select {...purchaseForm.register("warehouseId")} required>
-                  <option value="">Seleccionar...</option>
-                  {warehouses.map((w) => (
-                    <option key={w.id} value={w.id}>{w.name}</option>
-                  ))}
-                </Select>
+                <WarehouseSelector
+                  warehouses={warehouses}
+                  selectedWarehouseId={purchaseForm.watch("warehouseId") || null}
+                  onSelect={(id) => purchaseForm.setValue("warehouseId", id, { shouldValidate: true })}
+                  placeholder="Seleccionar..."
+                  required
+                />
                 {purchaseForm.formState.errors.warehouseId && (
-                  <p className="text-base text-red-500">{purchaseForm.formState.errors.warehouseId.message}</p>
+                  <p className="text-base text-red-500 mt-1">{purchaseForm.formState.errors.warehouseId.message}</p>
                 )}
               </div>
 
