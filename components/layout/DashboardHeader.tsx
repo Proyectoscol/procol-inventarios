@@ -43,90 +43,107 @@ export function DashboardHeader() {
   }
 
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo y título */}
-          <div className="flex items-center">
-            <Link href="/dashboard" className="flex items-center space-x-2">
-              <Package className="h-6 w-6 text-primary" />
-              <span className="text-xl font-bold text-gray-900">InventarIA</span>
-            </Link>
-          </div>
-
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-1">
-            {navigation.map((item) => {
-              const Icon = item.icon
-              return (
-                <Link key={item.name} href={item.href}>
-                  <Button
-                    variant={isActive(item.href) ? "default" : "ghost"}
-                    size="sm"
-                    className={`flex items-center space-x-2 ${
-                      isActive(item.href) ? "bg-primary text-white" : "hover:bg-gray-100"
-                    }`}
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span className="text-sm">{item.name}</span>
-                  </Button>
-                </Link>
-              )
-            })}
-          </nav>
-
-          {/* User menu */}
-          <div className="hidden md:flex items-center space-x-3">
-            <div className="flex items-center space-x-2 px-3 py-1.5 rounded-md bg-gray-50">
-              <User className="h-4 w-4 text-gray-600" />
-              <span className="text-sm font-medium text-gray-700">
-                {session?.user?.name}
-              </span>
+    <>
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            {/* Logo y título */}
+            <div className="flex items-center">
+              <Link href="/dashboard" className="flex items-center space-x-2">
+                <Package className="h-6 w-6 text-primary" />
+                <span className="text-xl font-bold text-gray-900">InventarIA</span>
+              </Link>
             </div>
-          </div>
 
-          {/* Mobile menu button */}
-          <div className="md:hidden flex items-center space-x-2">
-            <span className="text-sm text-gray-600">{session?.user?.name}</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </Button>
-          </div>
-        </div>
-
-        {/* Mobile Navigation */}
-        {mobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-gray-200">
-            <nav className="flex flex-col space-y-2">
+            {/* Desktop Navigation */}
+            <nav className="hidden md:flex items-center space-x-1">
               {navigation.map((item) => {
                 const Icon = item.icon
                 return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
+                  <Link key={item.name} href={item.href}>
                     <Button
                       variant={isActive(item.href) ? "default" : "ghost"}
-                      className={`w-full justify-start ${
-                        isActive(item.href) ? "bg-primary text-white" : ""
+                      size="sm"
+                      className={`flex items-center space-x-2 ${
+                        isActive(item.href) ? "bg-primary text-white" : "hover:bg-gray-100"
                       }`}
                     >
-                      <Icon className="h-4 w-4 mr-2" />
-                      <span>{item.name}</span>
+                      <Icon className="h-4 w-4" />
+                      <span className="text-sm">{item.name}</span>
                     </Button>
                   </Link>
                 )
               })}
             </nav>
+
+            {/* User menu */}
+            <div className="hidden md:flex items-center space-x-3">
+              <div className="flex items-center space-x-2 px-3 py-1.5 rounded-md bg-gray-50">
+                <User className="h-4 w-4 text-gray-600" />
+                <span className="text-sm font-medium text-gray-700">
+                  {session?.user?.name}
+                </span>
+              </div>
+            </div>
+
+            {/* Mobile menu button */}
+            <div className="md:hidden flex items-center space-x-2">
+              <span className="text-sm text-gray-600 truncate max-w-[120px]">
+                {session?.user?.name}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="relative z-50"
+              >
+                {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </Button>
+            </div>
           </div>
-        )}
+        </div>
+      </header>
+
+      {/* Backdrop overlay para móvil */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Mobile Navigation - Overlay */}
+      <div
+        className={`fixed top-16 left-0 right-0 bg-white border-b border-gray-200 shadow-lg z-50 md:hidden transition-transform duration-300 ease-in-out ${
+          mobileMenuOpen ? "translate-y-0" : "-translate-y-full"
+        }`}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <nav className="flex flex-col space-y-2">
+            {navigation.map((item) => {
+              const Icon = item.icon
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <Button
+                    variant={isActive(item.href) ? "default" : "ghost"}
+                    className={`w-full justify-start ${
+                      isActive(item.href) ? "bg-primary text-white" : ""
+                    }`}
+                  >
+                    <Icon className="h-4 w-4 mr-2" />
+                    <span>{item.name}</span>
+                  </Button>
+                </Link>
+              )
+            })}
+          </nav>
+        </div>
       </div>
-    </header>
+    </>
   )
 }
 
