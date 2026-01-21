@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select } from "@/components/ui/select"
+import { WarehouseSelector } from "@/components/shared/WarehouseSelector"
 import { ImageUpload } from "@/components/shared/ImageUpload"
 import { CurrencyInput } from "@/components/shared/CurrencyInput"
 import { toast } from "sonner"
@@ -261,18 +261,15 @@ export function QuickProductCreationModal({
             >
               <div>
                 <Label className="text-base">Bodega *</Label>
-                <Select 
-                  value={productForm.watch("warehouseId") || ""}
-                  onChange={(e) => productForm.setValue("warehouseId", e.target.value, { shouldValidate: true })}
+                <WarehouseSelector
+                  warehouses={warehouses}
+                  selectedWarehouseId={productForm.watch("warehouseId") || null}
+                  onSelect={(id) => productForm.setValue("warehouseId", id, { shouldValidate: true })}
+                  placeholder="Seleccionar..."
                   required
-                >
-                  <option value="">Seleccionar...</option>
-                  {warehouses.map((w) => (
-                    <option key={w.id} value={w.id}>{w.name}</option>
-                  ))}
-                </Select>
+                />
                 {productForm.formState.errors.warehouseId && (
-                  <p className="text-base text-red-500">{productForm.formState.errors.warehouseId?.message}</p>
+                  <p className="text-base text-red-500 mt-1">{productForm.formState.errors.warehouseId?.message}</p>
                 )}
               </div>
 
