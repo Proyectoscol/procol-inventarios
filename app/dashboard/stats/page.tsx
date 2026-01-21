@@ -27,12 +27,12 @@ export default function StatsPage() {
   const [selectedStat, setSelectedStat] = useState<{ type: string; title: string } | null>(null)
   const [selectedProduct, setSelectedProduct] = useState<{ id: string; name: string } | null>(null)
   
-  // Estado para el rango de fechas
+  // Estado para el rango de fechas - Por defecto: todo el historial
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>(() => {
     const to = new Date()
     to.setHours(23, 59, 59, 999)
-    const from = new Date()
-    from.setMonth(from.getMonth() - 1)
+    // Fecha de inicio: 1 de enero de 2000 (fecha muy antigua para incluir todo el historial)
+    const from = new Date(2000, 0, 1)
     from.setHours(0, 0, 0, 0)
     return { from, to }
   })
