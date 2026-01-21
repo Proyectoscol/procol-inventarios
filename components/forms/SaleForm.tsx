@@ -459,7 +459,7 @@ export function SaleForm({ companyId, warehouses, customers: initialCustomers = 
       {customerId && (
         <div>
           <div className="flex justify-between items-center mb-2">
-            <Label>Producto*</Label>
+            <Label>Producto *</Label>
             <Button
               type="button"
               variant="outline"

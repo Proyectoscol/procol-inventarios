@@ -126,7 +126,7 @@ export async function GET(
     let currentY = tableTop
 
     // Headers
-    doc.fontSize(10).font('Helvetica-Bold')
+    doc.fontSize(10).font('Times-Bold')
     doc.text('Producto', 50, currentY)
     doc.text('Bodega', 200, currentY)
     doc.text('Cant.', 300, currentY, { width: 50, align: 'right' })
@@ -137,7 +137,7 @@ export async function GET(
     doc.moveTo(50, currentY).lineTo(550, currentY).stroke()
 
     // Items
-    doc.font('Helvetica').fontSize(9)
+    doc.font('Times-Roman').fontSize(9)
     relatedMovements.forEach((movement, index) => {
       if (currentY > 700) {
         doc.addPage()
@@ -178,13 +178,13 @@ export async function GET(
       currentY += 20
     }
 
-    doc.fontSize(14).font('Helvetica-Bold')
+    doc.fontSize(14).font('Times-Bold')
     doc.text('TOTAL:', 400, currentY, { width: 100, align: 'right' })
     doc.text(`$${total.toLocaleString('es-CO')}`, 450, currentY, { width: 100, align: 'right' })
     currentY += 30
 
     // Información de pago
-    doc.fontSize(12).font('Helvetica')
+    doc.fontSize(12).font('Times-Roman')
     doc.text('CONDICIONES DE PAGO', { underline: true })
     doc.moveDown(0.5)
     doc.fontSize(10)
