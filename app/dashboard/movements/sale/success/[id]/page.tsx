@@ -84,7 +84,7 @@ export default function SaleSuccessPage() {
             </p>
             <div className="flex flex-wrap justify-center gap-4 mt-6">
               <div className="bg-blue-50 px-4 py-2 rounded-lg">
-                <p className="text-sm text-muted-foreground">Número de Factura</p>
+                <p className="text-sm text-muted-foreground">Número de Orden de Pedido</p>
                 <p className="text-xl font-bold text-blue-600">
                   {saleData.movements[0]?.movementNumber || "N/A"}
                 </p>
@@ -122,7 +122,7 @@ export default function SaleSuccessPage() {
             size="lg"
           >
             <FileText className="h-6 w-6 mr-3" />
-            Ver Factura PDF
+            Ver Orden de Pedido PDF
           </Button>
         </div>
 

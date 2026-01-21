@@ -79,7 +79,7 @@ export async function GET(
 
     // Header
     doc.setFontSize(24)
-    doc.text('FACTURA DE VENTA', 105, yPosition, { align: 'center' })
+    doc.text('ORDEN DE PEDIDO', 105, yPosition, { align: 'center' })
     yPosition += 10
 
     // Información de la empresa
@@ -89,9 +89,9 @@ export async function GET(
       yPosition += 8
     }
 
-    // Número de factura y fecha
+    // Número de orden de pedido y fecha
     doc.setFontSize(12)
-    doc.text(`Factura No: ${relatedMovements[0]?.movementNumber || 'N/A'}`, 20, yPosition)
+    doc.text(`Orden de Pedido No: ${relatedMovements[0]?.movementNumber || 'N/A'}`, 20, yPosition)
     // Formato de fecha más corto y simple
     const fecha = new Date(initialMovement.movementDate)
     const fechaStr = fecha.toLocaleDateString('es-CO', {
@@ -332,7 +332,7 @@ export async function GET(
     return new NextResponse(uint8Array, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `inline; filename="factura-${relatedMovements[0]?.movementNumber || 'venta'}.pdf"`,
+        'Content-Disposition': `inline; filename="orden-de-pedido-${relatedMovements[0]?.movementNumber || 'venta'}.pdf"`,
         'Content-Length': pdfBuffer.length.toString()
       }
     })
