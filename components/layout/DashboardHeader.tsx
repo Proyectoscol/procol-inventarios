@@ -10,7 +10,8 @@ import {
   Home,
   Menu,
   X,
-  User
+  User,
+  Receipt
 } from "lucide-react"
 import { useState } from "react"
 
@@ -24,6 +25,7 @@ export function DashboardHeader() {
     { name: "Dashboard", href: "/dashboard", icon: Home },
     { name: "Inventario", href: "/dashboard/inventory", icon: Package },
     { name: "Clientes", href: "/dashboard/customers", icon: User },
+    { name: "Movimientos", href: "/dashboard/movements", icon: Receipt },
     { name: "Configuración", href: "/dashboard/settings", icon: Settings },
   ]
 
