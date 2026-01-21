@@ -12,10 +12,12 @@ import { StatDetailsModal } from "@/components/modals/StatDetailsModal"
 import { ProductDetailsModal } from "@/components/modals/ProductDetailsModal"
 import { Warehouse } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useCompany } from "@/contexts/CompanyContext"
 
 export default function StatsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const { selectedCompanyId } = useCompany()
   const [stats, setStats] = useState<any>(null)
   const [warehouses, setWarehouses] = useState<any[]>([])
   const [selectedWarehouseIds, setSelectedWarehouseIds] = useState<Set<string>>(new Set())
@@ -30,17 +32,10 @@ export default function StatsPage() {
   }, [status, router])
 
   useEffect(() => {
-    if (session) {
-      fetch("/api/companies")
-        .then(res => res.json())
-        .then(data => {
-          if (data.length > 0) {
-            setCompanyId(data[0].id)
-            fetchWarehouses(data[0].id)
-          }
-        })
+    if (selectedCompanyId) {
+      fetchWarehouses(selectedCompanyId)
     }
-  }, [session])
+  }, [selectedCompanyId])
 
   const fetchWarehouses = async (compId: string) => {
     try {
