@@ -134,16 +134,22 @@ export function DateRangeSelector({
   }
 
   const isDateInRange = (date: Date) => {
+    if (!day.isCurrentMonth) return false
+    
     const normalizedDate = normalizeDate(date)
     const normalizedFrom = normalizeDate(from)
     const normalizedTo = normalizeDate(to)
     const currentFrom = tempFrom ? normalizeDate(tempFrom) : normalizedFrom
     
-    // Si estamos seleccionando el fin, mostrar el rango temporal
+    // Si estamos seleccionando el fin y hay una fecha de inicio temporal,
+    // mostrar el rango desde tempFrom hasta la fecha actual (hover)
     if (!selectingStart && tempFrom) {
-      return normalizedDate >= currentFrom && normalizedDate <= normalizedDate
+      // Solo mostrar rango si la fecha está después de tempFrom
+      // El rango completo se mostrará cuando se seleccione la fecha final
+      return false // No mostrar rango hasta que se seleccione la fecha final
     }
     
+    // Mostrar rango establecido
     return normalizedDate >= normalizedFrom && normalizedDate <= normalizedTo
   }
 
@@ -362,7 +368,7 @@ export function DateRangeSelector({
               {days.map((day, idx) => {
                 const normalizedDay = normalizeDate(day.date)
                 const isSelected = isDateSelected(day.date)
-                const inRange = isDateInRange(day.date) && day.isCurrentMonth
+                const inRange = isDateInRange(day.date, day.isCurrentMonth)
                 const isToday = (() => {
                   const today = normalizeDate(new Date())
                   return normalizedDay.getTime() === today.getTime()
