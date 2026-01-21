@@ -88,6 +88,7 @@ export function SaleForm({ companyId, warehouses, customers: initialCustomers = 
   const [editingProductIndex, setEditingProductIndex] = useState<number | null>(null)
   const [editingProductBackup, setEditingProductBackup] = useState<ProductSaleItem | null>(null)
   const [showProductSearch, setShowProductSearch] = useState(true)
+  const [editingMixedField, setEditingMixedField] = useState<"cash" | "credit" | null>(null)
   
   useEffect(() => {
     setCustomers(initialCustomers)
@@ -143,6 +144,8 @@ export function SaleForm({ companyId, warehouses, customers: initialCustomers = 
           setValue("creditAmount", subtotal / 2, { shouldValidate: true })
         }
       }
+      // Resetear el campo de edición cuando cambia el tipo de pago
+      setEditingMixedField(null)
     } else if (paymentType === "cash") {
       setValue("creditAmount", undefined)
       setValue("creditDays", undefined)
@@ -717,18 +720,29 @@ export function SaleForm({ companyId, warehouses, customers: initialCustomers = 
               {paymentType === "mixed" && (
                 <>
                   <div>
-                    <Label>Contado (COP) - Máximo: ${subtotal.toLocaleString("es-CO")}</Label>
+                    <Label>
+                      Contado (COP) - Máximo: ${subtotal.toLocaleString("es-CO")}
+                      {editingMixedField === "credit" && (
+                        <span className="text-xs text-muted-foreground ml-2">(calculado automáticamente)</span>
+                      )}
+                    </Label>
                     <CurrencyInput
                       value={watch("cashAmount") || 0}
                       onChange={(val) => {
-                        // Limitar al subtotal máximo
-                        const maxCash = Math.min(val, subtotal)
-                        const finalCash = Math.max(0, maxCash)
+                        // Limitar al subtotal máximo - no permitir valores mayores
+                        if (val > subtotal) {
+                          val = subtotal
+                        }
+                        const finalCash = Math.max(0, Math.min(val, subtotal))
                         setValue("cashAmount", finalCash, { shouldValidate: true })
+                        // Calcular crédito automáticamente
                         const credit = subtotal - finalCash
                         setValue("creditAmount", credit > 0 ? credit : 0, { shouldValidate: true })
+                        setEditingMixedField("cash")
                       }}
+                      onFocus={() => setEditingMixedField("cash")}
                       placeholder={`Máximo ${subtotal.toLocaleString("es-CO")}`}
+                      disabled={editingMixedField === "credit"}
                     />
                     {watch("cashAmount") !== undefined && watch("cashAmount")! > subtotal && (
                       <p className="text-xs text-red-500 mt-1">
@@ -737,21 +751,33 @@ export function SaleForm({ companyId, warehouses, customers: initialCustomers = 
                     )}
                     <p className="text-xs text-muted-foreground mt-1">
                       Total: ${subtotal.toLocaleString("es-CO")} - Crédito: ${(watch("creditAmount") || 0).toLocaleString("es-CO")}
+                      {editingMixedField === "cash" && " (calculado automáticamente)"}
                     </p>
                   </div>
                   <div>
-                    <Label>Crédito (COP) - Máximo: ${subtotal.toLocaleString("es-CO")}</Label>
+                    <Label>
+                      Crédito (COP) - Máximo: ${subtotal.toLocaleString("es-CO")}
+                      {editingMixedField === "cash" && (
+                        <span className="text-xs text-muted-foreground ml-2">(calculado automáticamente)</span>
+                      )}
+                    </Label>
                     <CurrencyInput
                       value={watch("creditAmount") || 0}
                       onChange={(val) => {
-                        // Limitar al subtotal máximo
-                        const maxCredit = Math.min(val, subtotal)
-                        const finalCredit = Math.max(0, maxCredit)
+                        // Limitar al subtotal máximo - no permitir valores mayores
+                        if (val > subtotal) {
+                          val = subtotal
+                        }
+                        const finalCredit = Math.max(0, Math.min(val, subtotal))
                         setValue("creditAmount", finalCredit, { shouldValidate: true })
+                        // Calcular contado automáticamente
                         const cash = subtotal - finalCredit
                         setValue("cashAmount", cash > 0 ? cash : 0, { shouldValidate: true })
+                        setEditingMixedField("credit")
                       }}
+                      onFocus={() => setEditingMixedField("credit")}
                       placeholder={`Máximo ${subtotal.toLocaleString("es-CO")}`}
+                      disabled={editingMixedField === "cash"}
                     />
                     {watch("creditAmount") !== undefined && watch("creditAmount")! > subtotal && (
                       <p className="text-xs text-red-500 mt-1">
@@ -760,6 +786,7 @@ export function SaleForm({ companyId, warehouses, customers: initialCustomers = 
                     )}
                     <p className="text-xs text-muted-foreground mt-1">
                       Total: ${subtotal.toLocaleString("es-CO")} - Contado: ${(watch("cashAmount") || 0).toLocaleString("es-CO")}
+                      {editingMixedField === "credit" && " (calculado automáticamente)"}
                     </p>
                   </div>
                 </>

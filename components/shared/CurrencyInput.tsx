@@ -10,6 +10,7 @@ interface CurrencyInputProps {
   placeholder?: string
   disabled?: boolean
   className?: string
+  onFocus?: () => void
 }
 
 export function CurrencyInput({ 
@@ -17,7 +18,8 @@ export function CurrencyInput({
   onChange, 
   placeholder,
   disabled = false,
-  className
+  className,
+  onFocus
 }: CurrencyInputProps) {
   // Función para formatear números con coma como separador de miles
   const formatNumber = (num: number): string => {
@@ -62,6 +64,7 @@ export function CurrencyInput({
         inputMode="numeric"
         value={displayValue}
         onChange={handleChange}
+        onFocus={onFocus}
         placeholder={placeholder || "1,000,000"}
         disabled={disabled}
         className={`pl-7 ${className || ""}`}
