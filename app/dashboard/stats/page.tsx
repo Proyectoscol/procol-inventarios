@@ -254,84 +254,7 @@ export default function StatsPage() {
           </Card>
         </div>
 
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>🏆 Top 5 Productos Más Vendidos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {stats.topSales && stats.topSales.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-2 sm:p-3 font-semibold">#</th>
-                      <th className="text-left p-2 sm:p-3 font-semibold">Producto</th>
-                      <th className="text-right p-2 sm:p-3 font-semibold">Unidades Vendidas</th>
-                      <th className="text-right p-2 sm:p-3 font-semibold">Stock Actual</th>
-                      <th className="text-right p-2 sm:p-3 font-semibold">Último Precio Compra</th>
-                      <th className="text-right p-2 sm:p-3 font-semibold">Total Vendido</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {stats.topSales.map((product: any, idx: number) => (
-                      <tr 
-                        key={product.productId} 
-                        className="border-b hover:bg-muted/50 cursor-pointer transition-colors"
-                        onClick={() => setSelectedProduct({ id: product.productId, name: product.productName })}
-                      >
-                        <td className="p-2 sm:p-3 font-semibold">{idx + 1}</td>
-                        <td className="p-2 sm:p-3">
-                          <div className="font-medium">{product.productName}</div>
-                        </td>
-                        <td className="text-right p-2 sm:p-3 font-semibold">
-                          {product.totalSold.toLocaleString("es-CO")}
-                        </td>
-                        <td className="text-right p-2 sm:p-3">
-                          <span className={`font-semibold ${
-                            product.currentStock > 0 ? "text-green-600" : "text-red-600"
-                          }`}>
-                            {product.currentStock.toLocaleString("es-CO")}
-                          </span>
-                        </td>
-                        <td className="text-right p-2 sm:p-3">
-                          {product.lastPurchasePrice ? (
-                            <span className="font-semibold text-blue-600">
-                              ${product.lastPurchasePrice.toLocaleString("es-CO")} COP
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">N/A</span>
-                          )}
-                        </td>
-                        <td className="text-right p-2 sm:p-3 font-semibold text-green-600">
-                          ${product.totalRevenue.toLocaleString("es-CO")} COP
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">
-                  No hay datos de ventas disponibles en este período.
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Calendario de Movimientos */}
-        {selectedCompanyId && (
-          <div className="mb-8 -mx-2 sm:mx-0">
-            <MovementCalendar
-              companyId={selectedCompanyId}
-              warehouseIds={Array.from(selectedWarehouseIds)}
-              onDateSelect={(date) => setSelectedDate(date)}
-            />
-          </div>
-        )}
-
-        {/* Nuevas Estadísticas después del calendario */}
+        {/* Nuevas Estadísticas */}
         {stats && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
             {/* Compras Totales */}
@@ -551,6 +474,84 @@ export default function StatsPage() {
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* Top 5 Productos Más Vendidos - Movido al final */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>🏆 Top 5 Productos Más Vendidos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {stats.topSales && stats.topSales.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left p-2 sm:p-3 font-semibold">#</th>
+                      <th className="text-left p-2 sm:p-3 font-semibold">Producto</th>
+                      <th className="text-right p-2 sm:p-3 font-semibold">Unidades Vendidas</th>
+                      <th className="text-right p-2 sm:p-3 font-semibold">Stock Actual</th>
+                      <th className="text-right p-2 sm:p-3 font-semibold">Último Precio Compra</th>
+                      <th className="text-right p-2 sm:p-3 font-semibold">Total Vendido</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.topSales.map((product: any, idx: number) => (
+                      <tr 
+                        key={product.productId} 
+                        className="border-b hover:bg-muted/50 cursor-pointer transition-colors"
+                        onClick={() => setSelectedProduct({ id: product.productId, name: product.productName })}
+                      >
+                        <td className="p-2 sm:p-3 font-semibold">{idx + 1}</td>
+                        <td className="p-2 sm:p-3">
+                          <div className="font-medium">{product.productName}</div>
+                        </td>
+                        <td className="text-right p-2 sm:p-3 font-semibold">
+                          {product.totalSold.toLocaleString("es-CO")}
+                        </td>
+                        <td className="text-right p-2 sm:p-3">
+                          <span className={`font-semibold ${
+                            product.currentStock > 0 ? "text-green-600" : "text-red-600"
+                          }`}>
+                            {product.currentStock.toLocaleString("es-CO")}
+                          </span>
+                        </td>
+                        <td className="text-right p-2 sm:p-3">
+                          {product.lastPurchasePrice ? (
+                            <span className="font-semibold text-blue-600">
+                              ${product.lastPurchasePrice.toLocaleString("es-CO")} COP
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">N/A</span>
+                          )}
+                        </td>
+                        <td className="text-right p-2 sm:p-3 font-semibold text-green-600">
+                          ${product.totalRevenue.toLocaleString("es-CO")} COP
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">
+                  No hay datos de ventas disponibles en este período.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Calendario de Movimientos - Movido al final */}
+        {selectedCompanyId && (
+          <div className="mb-8 -mx-2 sm:mx-0">
+            <MovementCalendar
+              companyId={selectedCompanyId}
+              warehouseIds={Array.from(selectedWarehouseIds)}
+              onDateSelect={(date) => setSelectedDate(date)}
+            />
+          </div>
         )}
 
         {/* Botón de atrás al final */}
