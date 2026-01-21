@@ -678,7 +678,6 @@ export default function InventoryPage() {
         <EditProductModal
           product={editingProduct}
           companyId={selectedCompanyId || ""}
-          warehouses={warehouses}
           open={!!editingProduct}
           onClose={() => setEditingProduct(null)}
           onSuccess={() => {
