@@ -54,6 +54,24 @@ export function RangeCalendar({ companyId, warehouseIds = [], dateRange, onDateS
     const end = new Date(dateRange.to)
     end.setHours(23, 59, 59, 999)
 
+    // Calcular total de días en el rango
+    const totalDays = Math.ceil((end.getTime() - current.getTime()) / (1000 * 60 * 60 * 24)) + 1
+
+    // Si el rango es mayor a 32 días, solo mostrar días con actividad
+    if (totalDays > 32) {
+      // Convertir días con actividad a objetos Date
+      const activityDates = Array.from(daysWithActivity).map(dateStr => {
+        const [year, month, day] = dateStr.split('-').map(Number)
+        return new Date(year, month - 1, day)
+      }).filter(date => {
+        // Filtrar solo los que están en el rango
+        return date >= current && date <= end
+      }).sort((a, b) => a.getTime() - b.getTime())
+
+      return activityDates
+    }
+
+    // Si el rango es 32 días o menos, mostrar todos los días
     while (current <= end) {
       days.push(new Date(current))
       current.setDate(current.getDate() + 1)
@@ -94,36 +112,68 @@ export function RangeCalendar({ companyId, warehouseIds = [], dateRange, onDateS
   }
 
   const days = getAllDaysInRange()
+  const totalDaysInRange = Math.ceil((new Date(dateRange.to).getTime() - new Date(dateRange.from).getTime()) / (1000 * 60 * 60 * 24)) + 1
+  const showOnlyActivityDays = totalDaysInRange > 32
   const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
 
   // Agrupar días por semana
   const weeks: Date[][] = []
   let currentWeek: Date[] = []
   
-  days.forEach((day, index) => {
-    const dayOfWeek = day.getDay()
-    
-    // Si es el primer día y no empieza en domingo, agregar días vacíos
-    if (index === 0 && dayOfWeek !== 0) {
-      for (let i = 0; i < dayOfWeek; i++) {
-        currentWeek.push(null as any)
-      }
-    }
-    
-    currentWeek.push(day)
-    
-    // Si es domingo o el último día, cerrar la semana
-    if (dayOfWeek === 6 || index === days.length - 1) {
-      // Completar la semana si no termina en sábado
-      if (dayOfWeek !== 6 && index === days.length - 1) {
-        for (let i = dayOfWeek + 1; i < 7; i++) {
+  if (showOnlyActivityDays) {
+    // Si solo mostramos días con actividad, agruparlos de forma más compacta
+    // Agrupar en semanas pero sin preocuparnos por completar semanas
+    days.forEach((day, index) => {
+      const dayOfWeek = day.getDay()
+      
+      // Si es el primer día y no empieza en domingo, agregar días vacíos
+      if (index === 0 && dayOfWeek !== 0) {
+        for (let i = 0; i < dayOfWeek; i++) {
           currentWeek.push(null as any)
         }
       }
-      weeks.push([...currentWeek])
-      currentWeek = []
-    }
-  })
+      
+      currentWeek.push(day)
+      
+      // Si es domingo o el último día, cerrar la semana
+      if (dayOfWeek === 6 || index === days.length - 1) {
+        // Completar la semana si no termina en sábado
+        if (dayOfWeek !== 6 && index === days.length - 1) {
+          for (let i = dayOfWeek + 1; i < 7; i++) {
+            currentWeek.push(null as any)
+          }
+        }
+        weeks.push([...currentWeek])
+        currentWeek = []
+      }
+    })
+  } else {
+    // Comportamiento original: mostrar todos los días
+    days.forEach((day, index) => {
+      const dayOfWeek = day.getDay()
+      
+      // Si es el primer día y no empieza en domingo, agregar días vacíos
+      if (index === 0 && dayOfWeek !== 0) {
+        for (let i = 0; i < dayOfWeek; i++) {
+          currentWeek.push(null as any)
+        }
+      }
+      
+      currentWeek.push(day)
+      
+      // Si es domingo o el último día, cerrar la semana
+      if (dayOfWeek === 6 || index === days.length - 1) {
+        // Completar la semana si no termina en sábado
+        if (dayOfWeek !== 6 && index === days.length - 1) {
+          for (let i = dayOfWeek + 1; i < 7; i++) {
+            currentWeek.push(null as any)
+          }
+        }
+        weeks.push([...currentWeek])
+        currentWeek = []
+      }
+    })
+  }
 
   return (
     <div className="w-full overflow-x-auto">
@@ -133,7 +183,10 @@ export function RangeCalendar({ companyId, warehouseIds = [], dateRange, onDateS
             <CalendarIcon className="h-4 w-4 sm:h-5 sm:w-5" />
             Calendario de Movimientos
             <span className="text-sm font-normal text-muted-foreground ml-2">
-              ({days.length} días)
+              {showOnlyActivityDays 
+                ? `(${days.length} días con actividad de ${totalDaysInRange} días totales)`
+                : `(${days.length} días)`
+              }
             </span>
           </CardTitle>
         </CardHeader>
