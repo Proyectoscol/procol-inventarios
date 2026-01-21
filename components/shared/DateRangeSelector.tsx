@@ -139,8 +139,6 @@ export function DateRangeSelector({
   }
 
   const isDateInRange = (date: Date, isCurrentMonth: boolean) => {
-    if (!isCurrentMonth) return false
-    
     const normalizedDate = normalizeDate(date)
     const normalizedFrom = normalizeDate(from)
     const normalizedTo = normalizeDate(to)
@@ -151,7 +149,7 @@ export function DateRangeSelector({
       const tempFromNormalized = normalizeDate(tempFrom)
       const hoveredNormalized = hoveredDate ? normalizeDate(hoveredDate) : null
       
-      // Si hay hover, mostrar rango desde tempFrom hasta hoveredDate
+      // Si hay hover, mostrar rango desde tempFrom hasta hoveredDate (incluye días de otros meses)
       if (hoveredNormalized) {
         const minDate = tempFromNormalized < hoveredNormalized ? tempFromNormalized : hoveredNormalized
         const maxDate = tempFromNormalized > hoveredNormalized ? tempFromNormalized : hoveredNormalized
@@ -442,7 +440,8 @@ export function DateRangeSelector({
                     disabled={!day.isCurrentMonth}
                     className={cn(
                       "h-8 w-8 text-xs rounded-md transition-colors relative",
-                      !day.isCurrentMonth && "text-gray-300 cursor-not-allowed opacity-50",
+                      !day.isCurrentMonth && inRange && "bg-primary/10 text-primary font-semibold opacity-70",
+                      !day.isCurrentMonth && !inRange && "text-gray-300 cursor-not-allowed opacity-50",
                       day.isCurrentMonth && !isSelected && !inRange && "text-gray-700 hover:bg-gray-100",
                       isSelected && "bg-primary text-white font-semibold hover:bg-primary/90 z-10",
                       inRange && !isSelected && day.isCurrentMonth && "bg-primary/20 text-primary font-semibold",
