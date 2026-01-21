@@ -50,7 +50,7 @@ export default function StatsPage() {
         const data = await res.json()
         setWarehouses(data)
         // Seleccionar todas las bodegas por defecto
-        const allIds = new Set(data.map((w: any) => w.id))
+        const allIds = new Set<string>(data.map((w: any) => w.id))
         setSelectedWarehouseIds(allIds)
         // Cargar estadísticas con todas las bodegas seleccionadas
         if (data.length > 0) {
