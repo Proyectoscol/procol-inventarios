@@ -31,15 +31,6 @@ export async function POST(req: NextRequest) {
 
     const data = await req.json()
     
-    // LOGS DE DEBUG - Ver qué datos están llegando
-    console.log("=== VENTA RECIBIDA ===")
-    console.log("paymentType:", data.paymentType)
-    console.log("cashAmount:", data.cashAmount)
-    console.log("creditAmount:", data.creditAmount)
-    console.log("creditDays:", data.creditDays)
-    console.log("totalAmount calculado:", data.unitPrice * data.quantity)
-    console.log("Datos completos:", JSON.stringify(data, null, 2))
-    
     // 1. Validar stock disponible
     const stock = await prisma.stock.findUnique({
       where: {
@@ -130,15 +121,6 @@ export async function POST(req: NextRequest) {
       // Calcular totalAmount
       const totalAmount = data.unitPrice * data.quantity
       
-      // LOGS DE DEBUG - Antes de crear el movimiento
-      console.log("=== CREANDO MOVIMIENTO ===")
-      console.log("paymentType recibido:", data.paymentType)
-      console.log("paymentType tipo:", typeof data.paymentType)
-      console.log("cashAmount recibido:", data.cashAmount)
-      console.log("creditAmount recibido:", data.creditAmount)
-      console.log("creditDays recibido:", data.creditDays)
-      console.log("totalAmount:", totalAmount)
-      
       // Determinar valores finales
       let finalCashAmount: number | null = null
       let finalCreditAmount: number | null = null
@@ -166,13 +148,6 @@ export async function POST(req: NextRequest) {
         finalCreditAmount = data.creditAmount || 0
         finalCreditDays = data.creditDays || null
       }
-      
-      console.log("Valores finales para DB:")
-      console.log("  cashAmount:", finalCashAmount)
-      console.log("  creditAmount:", finalCreditAmount)
-      console.log("  creditDays:", finalCreditDays)
-      console.log("  creditDueDate:", finalCreditDueDate)
-      console.log("  creditPaid:", data.paymentType === "cash")
       
       // Crear movimiento con fecha en zona horaria de Colombia
       const movement = await tx.movement.create({

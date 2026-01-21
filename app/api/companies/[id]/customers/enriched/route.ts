@@ -53,13 +53,15 @@ export async function GET(
         const pendingCredit = movements
           .filter(m => !m.creditPaid && (m.paymentType === "credit" || m.paymentType === "mixed"))
           .reduce((sum, m) => {
-            // Usar creditAmount actual que ya refleja los abonos
-            const currentCredit = Number(m.creditAmount || 0)
-            // Si es crédito puro y no tiene creditAmount, usar totalAmount
-            if (m.paymentType === "credit" && currentCredit === 0) {
-              return sum + Number(m.totalAmount || 0)
+            if (m.paymentType === "credit") {
+              // Para crédito puro: usar creditAmount si existe, sino usar totalAmount
+              // creditAmount puede ser null inicialmente, pero después de abonos siempre tiene valor
+              return sum + Number(m.creditAmount ?? m.totalAmount ?? 0)
+            } else if (m.paymentType === "mixed") {
+              // Para mixto: siempre usar creditAmount (debe estar guardado)
+              return sum + Number(m.creditAmount ?? 0)
             }
-            return sum + currentCredit
+            return sum
           }, 0)
 
         // Obtener fecha del último movimiento
