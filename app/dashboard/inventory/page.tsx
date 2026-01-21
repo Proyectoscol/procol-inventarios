@@ -20,11 +20,13 @@ export default function InventoryPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [products, setProducts] = useState<any[]>([])
+  const [filteredProducts, setFilteredProducts] = useState<any[]>([])
   const [warehouses, setWarehouses] = useState<any[]>([])
   const [companies, setCompanies] = useState<any[]>([])
   const [search, setSearch] = useState("")
   const [companyId, setCompanyId] = useState<string>("")
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("")
+  const [sortBy, setSortBy] = useState<"name" | "name-desc" | "stock-high" | "stock-low" | "last-purchase" | "last-sale">("name")
   const [showAddProduct, setShowAddProduct] = useState(false)
   const [productDetails, setProductDetails] = useState<Record<string, any>>({})
   const [editingProduct, setEditingProduct] = useState<any>(null)
@@ -59,8 +61,18 @@ export default function InventoryPage() {
     if (companyId && selectedWarehouseId) {
       fetchProducts(companyId, selectedWarehouseId)
       fetchInventoryValue(selectedWarehouseId)
+    } else {
+      // Limpiar productos si no hay bodega seleccionada
+      setProducts([])
+      setFilteredProducts([])
     }
-  }, [companyId, selectedWarehouseId, search])
+  }, [companyId, selectedWarehouseId])
+
+  useEffect(() => {
+    if (products.length > 0) {
+      applyFiltersAndSort(products, search, sortBy, selectedWarehouseId)
+    }
+  }, [search, sortBy, products, selectedWarehouseId])
 
   const fetchInventoryValue = async (warehouseId: string) => {
     setLoadingInventoryValue(true)
@@ -136,38 +148,53 @@ export default function InventoryPage() {
 
   const fetchProducts = async (compId: string, warehouseId: string) => {
     try {
-      const res = await fetch(`/api/companies/${compId}/products?q=${encodeURIComponent(search)}`)
+      const res = await fetch(`/api/companies/${compId}/products`)
       if (res.ok) {
         const data = await res.json()
         
-        // Mostrar todos los productos pero ordenar: primero los que tienen stock en esta bodega
-        const productsWithStock = data.filter((product: any) => {
-          const stock = product.stock?.find((s: any) => s.warehouseId === warehouseId)
-          return stock && stock.quantity > 0
-        })
-        
-        const productsWithoutStock = data.filter((product: any) => {
-          const stock = product.stock?.find((s: any) => s.warehouseId === warehouseId)
-          return !stock || stock.quantity === 0
-        })
-        
-        // Ordenar: primero los que tienen stock, luego los que no tienen
-        const filteredProducts = [...productsWithStock, ...productsWithoutStock]
-        
-        // Enriquecer con información de movimientos para el modal de confirmación
+        // Enriquecer con información de movimientos y fechas
         const enrichedProducts = await Promise.all(
-          filteredProducts.map(async (product: any) => {
+          data.map(async (product: any) => {
             try {
+              // Obtener información completa del producto
               const productRes = await fetch(`/api/products/${product.id}`)
+              let productData = product
               if (productRes.ok) {
-                const productData = await productRes.json()
-                return {
-                  ...product,
-                  _count: productData._count || { movements: 0 },
-                  movements: productData.movements || []
-                }
+                productData = await productRes.json()
               }
-              return product
+
+              // Obtener último movimiento de compra
+              let lastPurchaseDate = null
+              try {
+                const lastPurchaseRes = await fetch(`/api/products/${product.id}/last-purchase?warehouseId=${warehouseId}`)
+                if (lastPurchaseRes.ok) {
+                  const purchaseData = await lastPurchaseRes.json()
+                  lastPurchaseDate = purchaseData.lastPurchaseDate ? new Date(purchaseData.lastPurchaseDate) : null
+                }
+              } catch {
+                // Ignorar errores
+              }
+
+              // Obtener último movimiento de venta
+              let lastSaleDate = null
+              try {
+                const lastSaleRes = await fetch(`/api/products/${product.id}/last-sale?warehouseId=${warehouseId}`)
+                if (lastSaleRes.ok) {
+                  const saleData = await lastSaleRes.json()
+                  lastSaleDate = saleData.lastSaleDate ? new Date(saleData.lastSaleDate) : null
+                }
+              } catch {
+                // Ignorar errores
+              }
+
+              return {
+                ...product,
+                ...productData,
+                _count: productData._count || { movements: 0 },
+                movements: productData.movements || [],
+                lastPurchaseDate,
+                lastSaleDate
+              }
             } catch {
               return product
             }
@@ -184,6 +211,81 @@ export default function InventoryPage() {
     } catch (error) {
       console.error("Error cargando productos:", error)
     }
+  }
+
+  const applyFiltersAndSort = (productsList: any[], query: string, sort: string, warehouseId: string) => {
+    // Filtrar por búsqueda (solo si hay más de 2 caracteres)
+    let filtered = productsList
+    if (query.length >= 2) {
+      const queryLower = query.toLowerCase()
+      filtered = productsList.filter((product) => {
+        const nameMatch = product.name?.toLowerCase().includes(queryLower)
+        // Buscar por nombre (que es lo que tenemos, no hay campo "referencia" separado)
+        return nameMatch
+      })
+    }
+
+    // Filtrar por bodega seleccionada
+    filtered = filtered.map((product: any) => {
+      const stock = product.stock?.find((s: any) => s.warehouseId === warehouseId)
+      return {
+        ...product,
+        currentStock: stock?.quantity ?? 0
+      }
+    })
+
+    // Ordenar
+    let sorted = [...filtered]
+    switch (sort) {
+      case "name":
+        sorted.sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }))
+        break
+      case "name-desc":
+        sorted.sort((a, b) => b.name.localeCompare(a.name, "es", { sensitivity: "base" }))
+        break
+      case "stock-high":
+        sorted.sort((a, b) => {
+          const stockA = a.currentStock || 0
+          const stockB = b.currentStock || 0
+          if (stockB === stockA) {
+            return a.name.localeCompare(b.name, "es", { sensitivity: "base" })
+          }
+          return stockB - stockA
+        })
+        break
+      case "stock-low":
+        sorted.sort((a, b) => {
+          const stockA = a.currentStock || 0
+          const stockB = b.currentStock || 0
+          if (stockA === stockB) {
+            return a.name.localeCompare(b.name, "es", { sensitivity: "base" })
+          }
+          return stockA - stockB
+        })
+        break
+      case "last-purchase":
+        sorted.sort((a, b) => {
+          const dateA = a.lastPurchaseDate ? new Date(a.lastPurchaseDate).getTime() : 0
+          const dateB = b.lastPurchaseDate ? new Date(b.lastPurchaseDate).getTime() : 0
+          if (dateB === dateA) {
+            return a.name.localeCompare(b.name, "es", { sensitivity: "base" })
+          }
+          return dateB - dateA // Más reciente primero
+        })
+        break
+      case "last-sale":
+        sorted.sort((a, b) => {
+          const dateA = a.lastSaleDate ? new Date(a.lastSaleDate).getTime() : 0
+          const dateB = b.lastSaleDate ? new Date(b.lastSaleDate).getTime() : 0
+          if (dateB === dateA) {
+            return a.name.localeCompare(b.name, "es", { sensitivity: "base" })
+          }
+          return dateB - dateA // Más reciente primero
+        })
+        break
+    }
+
+    setFilteredProducts(sorted)
   }
 
   const fetchProductDetails = async (productId: string, warehouseId: string) => {
@@ -294,19 +396,41 @@ export default function InventoryPage() {
         )}
       </div>
 
-      {/* Selector de Bodega */}
+      {/* Selector de Empresa y Bodega */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Seleccionar Bodega</CardTitle>
+          <CardTitle>Seleccionar Empresa y Bodega</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
+            <div>
+              <Label htmlFor="company">Empresa</Label>
+              <Select
+                id="company"
+                value={companyId}
+                onChange={(e) => {
+                  setCompanyId(e.target.value)
+                  setSelectedWarehouseId("")
+                  if (e.target.value) {
+                    fetchWarehouses(e.target.value)
+                  }
+                }}
+              >
+                <option value="">Seleccionar empresa...</option>
+                {companies.map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
             <div>
               <Label htmlFor="warehouse">Bodega</Label>
               <Select
                 id="warehouse"
                 value={selectedWarehouseId}
                 onChange={(e) => setSelectedWarehouseId(e.target.value)}
+                disabled={!companyId}
               >
                 <option value="">Seleccionar bodega...</option>
                 {warehouses.map((warehouse) => (
@@ -382,17 +506,49 @@ export default function InventoryPage() {
 
       {selectedWarehouseId && (
         <>
-          <div className="mb-6">
-            <Input
-              placeholder="Buscar producto..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="max-w-md"
-            />
-          </div>
+          {/* Buscador y Filtros */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Buscar y Ordenar Productos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="search">Buscar Producto</Label>
+                  <Input
+                    id="search"
+                    placeholder="Escribe al menos 2 caracteres para buscar por nombre..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="max-w-md"
+                  />
+                  {search.length > 0 && search.length < 2 && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Escribe al menos 2 caracteres para buscar
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <Label htmlFor="sort">Ordenar por</Label>
+                  <Select
+                    id="sort"
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as any)}
+                  >
+                    <option value="name">Alfabéticamente (A-Z)</option>
+                    <option value="name-desc">Alfabéticamente (Z-A)</option>
+                    <option value="stock-high">Más Inventario</option>
+                    <option value="stock-low">Menos Inventario</option>
+                    <option value="last-purchase">Último Pedido</option>
+                    <option value="last-sale">Vendido Más Reciente</option>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {products.map((product) => {
+            {filteredProducts.map((product) => {
               const stock = product.stock?.find((s: any) => s.warehouseId === selectedWarehouseId)
               const stockQuantity = stock?.quantity ?? 0 // Usar ?? para que 0 se muestre correctamente
               const isLowStock = stockQuantity < product.minStockThreshold
@@ -516,11 +672,13 @@ export default function InventoryPage() {
             })}
           </div>
 
-          {products.length === 0 && (
+          {filteredProducts.length === 0 && (
             <Card>
               <CardContent className="p-8 text-center">
                 <p className="text-muted-foreground">
-                  No hay productos registrados.
+                  {search.length >= 2 
+                    ? "No se encontraron productos que coincidan con la búsqueda."
+                    : "No hay productos registrados."}
                 </p>
               </CardContent>
             </Card>
