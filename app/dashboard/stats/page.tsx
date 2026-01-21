@@ -11,7 +11,7 @@ import { RangeCalendar } from "@/components/calendar/RangeCalendar"
 import { DayDetailsModal } from "@/components/calendar/DayDetailsModal"
 import { StatDetailsModal } from "@/components/modals/StatDetailsModal"
 import { ProductDetailsModal } from "@/components/modals/ProductDetailsModal"
-import { Warehouse, Calendar } from "lucide-react"
+import { Warehouse, Calendar, RotateCcw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useCompany } from "@/contexts/CompanyContext"
 import { DateRangeSelector } from "@/components/shared/DateRangeSelector"
@@ -26,6 +26,7 @@ export default function StatsPage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedStat, setSelectedStat] = useState<{ type: string; title: string } | null>(null)
   const [selectedProduct, setSelectedProduct] = useState<{ id: string; name: string } | null>(null)
+  const [isLoadingStats, setIsLoadingStats] = useState(false)
   
   // Estado para el rango de fechas - Por defecto: todo el historial
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>(() => {
@@ -79,11 +80,43 @@ export default function StatsPage() {
       } else {
         newSet.add(warehouseId)
       }
+      // Forzar actualización inmediata
+      const newIds = Array.from(newSet)
+      if (selectedCompanyId) {
+        // Usar setTimeout para evitar actualizaciones simultáneas
+        setTimeout(() => {
+          fetchStats(selectedCompanyId, newIds)
+        }, 0)
+      }
       return newSet
     })
   }
 
+  const resetFilters = () => {
+    // Restablecer rango de fechas a todo el historial
+    const to = new Date()
+    to.setHours(23, 59, 59, 999)
+    const from = new Date(2000, 0, 1)
+    from.setHours(0, 0, 0, 0)
+    setDateRange({ from, to })
+    
+    // Seleccionar todas las bodegas
+    if (warehouses.length > 0) {
+      const allIds = new Set<string>(warehouses.map((w: any) => w.id))
+      setSelectedWarehouseIds(allIds)
+      
+      // Recargar estadísticas con filtros restablecidos
+      if (selectedCompanyId) {
+        fetchStats(selectedCompanyId, Array.from(allIds), { from, to })
+      }
+    }
+  }
+
   const fetchStats = async (compId: string, warehouseIds: string[], dateRangeToUse?: { from: Date; to: Date }) => {
+    // Evitar múltiples llamadas simultáneas
+    if (isLoadingStats) return
+    
+    setIsLoadingStats(true)
     try {
       const range = dateRangeToUse || dateRange
       const from = new Date(range.from)
@@ -114,23 +147,31 @@ export default function StatsPage() {
       setStats({ sales, profit, purchases, cashFlow, customers: customers.customers || [], topSales: topSales.topProducts || [], dateRange: { from, to } })
     } catch (error) {
       console.error("Error cargando estadísticas:", error)
+    } finally {
+      setIsLoadingStats(false)
     }
   }
 
   const handleDateRangeChange = (from: Date, to: Date) => {
     setDateRange({ from, to })
+    // Recargar estadísticas inmediatamente cuando cambia el rango de fechas
+    if (selectedCompanyId) {
+      const selectedIds = Array.from(selectedWarehouseIds)
+      fetchStats(selectedCompanyId, selectedIds, { from, to })
+    }
   }
 
-  // Recargar estadísticas cuando cambien las bodegas seleccionadas o el rango de fechas
+  // Recargar estadísticas cuando cambien las bodegas seleccionadas (solo si no se está cargando)
   useEffect(() => {
-    if (selectedCompanyId && warehouses.length > 0) {
+    if (selectedCompanyId && warehouses.length > 0 && !isLoadingStats) {
       const selectedIds = Array.from(selectedWarehouseIds)
-      if (selectedIds.length > 0) {
+      // Solo cargar si hay bodegas seleccionadas o si no hay bodegas disponibles
+      if (selectedIds.length > 0 || warehouses.length === 0) {
         fetchStats(selectedCompanyId, selectedIds)
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedWarehouseIds, selectedCompanyId, dateRange])
+  }, [selectedWarehouseIds, selectedCompanyId])
 
   if (status === "loading" || !stats) {
     return <div className="p-8">Cargando...</div>
@@ -150,10 +191,21 @@ export default function StatsPage() {
           {warehouses.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Warehouse className="h-5 w-5" />
-                  Filtrar por Bodegas
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Warehouse className="h-5 w-5" />
+                    Filtrar por Bodegas
+                  </CardTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={resetFilters}
+                    className="flex items-center gap-2"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    Restablecer
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
@@ -165,9 +217,11 @@ export default function StatsPage() {
                         variant={isSelected ? "default" : "outline"}
                         size="sm"
                         onClick={() => toggleWarehouse(warehouse.id)}
+                        disabled={isLoadingStats}
                         className={cn(
                           "transition-all",
-                          isSelected && "bg-primary text-primary-foreground"
+                          isSelected && "bg-primary text-primary-foreground",
+                          isLoadingStats && "opacity-50 cursor-not-allowed"
                         )}
                       >
                         {warehouse.name}
@@ -178,6 +232,11 @@ export default function StatsPage() {
                 {selectedWarehouseIds.size === 0 && (
                   <p className="text-sm text-muted-foreground mt-2">
                     ⚠️ No hay bodegas seleccionadas. Selecciona al menos una para ver estadísticas.
+                  </p>
+                )}
+                {isLoadingStats && (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Cargando estadísticas...
                   </p>
                 )}
               </CardContent>
