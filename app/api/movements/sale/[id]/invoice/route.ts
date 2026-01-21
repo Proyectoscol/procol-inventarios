@@ -62,8 +62,13 @@ export async function GET(
     const shippingCost = relatedMovements.reduce((sum, m) => sum + Number(m.shippingCost || 0), 0)
     const total = subtotal + shippingCost
 
-    // Generar PDF - NO especificar fuente para usar la predeterminada (evita búsqueda de archivos)
-    const doc = new PDFDocument({ margin: 50, size: 'LETTER' })
+    // Generar PDF - configurar para evitar búsqueda de archivos de fuentes
+    // Usar opciones que eviten la búsqueda de archivos externos
+    const doc = new PDFDocument({ 
+      margin: 50, 
+      size: 'LETTER',
+      // No especificar fontFamily para usar la predeterminada embebida
+    })
     const chunks: Buffer[] = []
 
     doc.on('data', (chunk: Buffer) => chunks.push(chunk))
