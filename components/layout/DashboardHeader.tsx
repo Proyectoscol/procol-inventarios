@@ -76,7 +76,7 @@ export function DashboardHeader() {
               })}
             </nav>
 
-            {/* User menu */}
+            {/* User menu - Desktop */}
             <div className="hidden md:flex items-center space-x-3">
               <div className="flex items-center space-x-2 px-3 py-1.5 rounded-md bg-gray-50">
                 <User className="h-4 w-4 text-gray-600" />
@@ -86,11 +86,14 @@ export function DashboardHeader() {
               </div>
             </div>
 
-            {/* Mobile menu button */}
-            <div className="md:hidden flex items-center space-x-2">
-              <span className="text-sm text-gray-600 truncate max-w-[120px]">
-                {session?.user?.name}
-              </span>
+            {/* Mobile: User and menu button */}
+            <div className="md:hidden flex items-center space-x-3">
+              <div className="flex items-center space-x-2 px-2 py-1 rounded-md bg-gray-50">
+                <User className="h-4 w-4 text-gray-600" />
+                <span className="text-sm text-gray-700 truncate max-w-[100px]">
+                  {session?.user?.name}
+                </span>
+              </div>
               <Button
                 variant="ghost"
                 size="sm"
@@ -112,10 +115,12 @@ export function DashboardHeader() {
         />
       )}
 
-      {/* Mobile Navigation - Overlay */}
+      {/* Mobile Navigation - Slide down from header */}
       <div
-        className={`fixed top-16 left-0 right-0 bg-white border-b border-gray-200 shadow-lg z-50 md:hidden transition-transform duration-300 ease-in-out ${
-          mobileMenuOpen ? "translate-y-0" : "-translate-y-full"
+        className={`fixed top-16 left-0 right-0 bg-white border-b border-gray-200 shadow-lg z-50 md:hidden transition-all duration-300 ease-out ${
+          mobileMenuOpen 
+            ? "opacity-100 translate-y-0 pointer-events-auto" 
+            : "opacity-0 -translate-y-4 pointer-events-none"
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
