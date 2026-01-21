@@ -32,6 +32,8 @@ export default function InventoryPage() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [productToDelete, setProductToDelete] = useState<any>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [inventoryValue, setInventoryValue] = useState<number | null>(null)
+  const [loadingInventoryValue, setLoadingInventoryValue] = useState(false)
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -56,17 +58,75 @@ export default function InventoryPage() {
   useEffect(() => {
     if (companyId && selectedWarehouseId) {
       fetchProducts(companyId, selectedWarehouseId)
+      fetchInventoryValue(selectedWarehouseId)
     }
   }, [companyId, selectedWarehouseId, search])
+
+  const fetchInventoryValue = async (warehouseId: string) => {
+    setLoadingInventoryValue(true)
+    try {
+      const res = await fetch(`/api/warehouses/${warehouseId}/inventory-value`)
+      if (res.ok) {
+        const data = await res.json()
+        setInventoryValue(data.totalValue || 0)
+      } else {
+        setInventoryValue(0)
+      }
+    } catch (error) {
+      console.error("Error cargando valor del inventario:", error)
+      setInventoryValue(0)
+    } finally {
+      setLoadingInventoryValue(false)
+    }
+  }
 
   const fetchWarehouses = async (compId: string) => {
     try {
       const res = await fetch(`/api/companies/${compId}/warehouses`)
       if (res.ok) {
         const data = await res.json()
-        setWarehouses(data)
-        if (data.length > 0 && !selectedWarehouseId) {
-          setSelectedWarehouseId(data[0].id)
+        
+        // Obtener información de stock para cada bodega y ordenar
+        const warehousesWithStock = await Promise.all(
+          data.map(async (warehouse: any) => {
+            try {
+              const stockRes = await fetch(`/api/warehouses/${warehouse.id}/inventory-value`)
+              if (stockRes.ok) {
+                const stockData = await stockRes.json()
+                return {
+                  ...warehouse,
+                  totalStock: stockData.totalItems || 0,
+                  inventoryValue: stockData.totalValue || 0
+                }
+              }
+              return {
+                ...warehouse,
+                totalStock: 0,
+                inventoryValue: 0
+              }
+            } catch {
+              return {
+                ...warehouse,
+                totalStock: 0,
+                inventoryValue: 0
+              }
+            }
+          })
+        )
+        
+        // Ordenar: primero las que tienen inventario (totalStock > 0), luego las que tienen 0
+        warehousesWithStock.sort((a, b) => {
+          if (a.totalStock > 0 && b.totalStock === 0) return -1
+          if (a.totalStock === 0 && b.totalStock > 0) return 1
+          // Si ambas tienen o no tienen stock, ordenar por nombre
+          return a.name.localeCompare(b.name)
+        })
+        
+        setWarehouses(warehousesWithStock)
+        if (warehousesWithStock.length > 0 && !selectedWarehouseId) {
+          // Seleccionar la primera bodega que tenga inventario, o la primera si ninguna tiene
+          const firstWithStock = warehousesWithStock.find((w: any) => w.totalStock > 0)
+          setSelectedWarehouseId(firstWithStock?.id || warehousesWithStock[0].id)
         }
       }
     } catch (error) {
@@ -79,9 +139,20 @@ export default function InventoryPage() {
       const res = await fetch(`/api/companies/${compId}/products?q=${encodeURIComponent(search)}`)
       if (res.ok) {
         const data = await res.json()
-        // Mostrar todos los productos de la compañía, no solo los que tienen stock
-        // El stock se mostrará como 0 si no existe registro para esa bodega
-        const filteredProducts = data
+        
+        // Mostrar todos los productos pero ordenar: primero los que tienen stock en esta bodega
+        const productsWithStock = data.filter((product: any) => {
+          const stock = product.stock?.find((s: any) => s.warehouseId === warehouseId)
+          return stock && stock.quantity > 0
+        })
+        
+        const productsWithoutStock = data.filter((product: any) => {
+          const stock = product.stock?.find((s: any) => s.warehouseId === warehouseId)
+          return !stock || stock.quantity === 0
+        })
+        
+        // Ordenar: primero los que tienen stock, luego los que no tienen
+        const filteredProducts = [...productsWithStock, ...productsWithoutStock]
         
         // Enriquecer con información de movimientos para el modal de confirmación
         const enrichedProducts = await Promise.all(
@@ -229,22 +300,50 @@ export default function InventoryPage() {
           <CardTitle>Seleccionar Bodega</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
-            <Label htmlFor="warehouse">Bodega</Label>
-            <Select
-              id="warehouse"
-              value={selectedWarehouseId}
-              onChange={(e) => setSelectedWarehouseId(e.target.value)}
-            >
-              <option value="">Seleccionar bodega...</option>
-              {warehouses.map((warehouse) => (
-                <option key={warehouse.id} value={warehouse.id}>
-                  {warehouse.name}
-                </option>
-              ))}
-            </Select>
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="warehouse">Bodega</Label>
+              <Select
+                id="warehouse"
+                value={selectedWarehouseId}
+                onChange={(e) => setSelectedWarehouseId(e.target.value)}
+              >
+                <option value="">Seleccionar bodega...</option>
+                {warehouses.map((warehouse) => (
+                  <option key={warehouse.id} value={warehouse.id}>
+                    {warehouse.name}
+                    {warehouse.totalStock !== undefined && (
+                      ` (${warehouse.totalStock > 0 ? `${warehouse.totalStock} items` : 'Sin inventario'})`
+                    )}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            
+            {/* Valor total del inventario */}
+            {selectedWarehouseId && (
+              <div className="bg-muted rounded-lg p-4 border">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-5 w-5 text-primary" />
+                    <span className="font-semibold text-base">Valor Total del Inventario</span>
+                  </div>
+                  {loadingInventoryValue ? (
+                    <span className="text-muted-foreground">Calculando...</span>
+                  ) : (
+                    <span className="text-2xl font-bold text-primary">
+                      ${(inventoryValue || 0).toLocaleString("es-CO")} COP
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Basado en el último precio de compra de cada producto
+                </p>
+              </div>
+            )}
+            
             {!selectedWarehouseId && (
-              <p className="text-sm text-muted-foreground mt-2">
+              <p className="text-sm text-muted-foreground">
                 Selecciona una bodega para ver el inventario
               </p>
             )}
@@ -421,7 +520,7 @@ export default function InventoryPage() {
             <Card>
               <CardContent className="p-8 text-center">
                 <p className="text-muted-foreground">
-                  No hay productos con stock en esta bodega.
+                  No hay productos registrados.
                 </p>
               </CardContent>
             </Card>
