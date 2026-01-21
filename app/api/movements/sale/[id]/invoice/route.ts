@@ -62,7 +62,7 @@ export async function GET(
     const shippingCost = relatedMovements.reduce((sum, m) => sum + Number(m.shippingCost || 0), 0)
     const total = subtotal + shippingCost
 
-    // Generar PDF
+    // Generar PDF - NO especificar fuente para usar la predeterminada (evita búsqueda de archivos)
     const doc = new PDFDocument({ margin: 50, size: 'LETTER' })
     const chunks: Buffer[] = []
 
@@ -125,9 +125,10 @@ export async function GET(
     const itemHeight = 60
     let currentY = tableTop
 
-    // Headers
-    doc.fontSize(10).font('Times-Bold')
-    doc.text('Producto', 50, currentY)
+    // Headers - usar solo fontSize sin especificar fuente (usa la predeterminada)
+    doc.fontSize(10)
+    // Hacer texto en negrita usando opciones
+    doc.text('Producto', 50, currentY, { continued: false })
     doc.text('Bodega', 200, currentY)
     doc.text('Cant.', 300, currentY, { width: 50, align: 'right' })
     doc.text('Precio Unit.', 360, currentY, { width: 80, align: 'right' })
@@ -137,7 +138,7 @@ export async function GET(
     doc.moveTo(50, currentY).lineTo(550, currentY).stroke()
 
     // Items
-    doc.font('Times-Roman').fontSize(9)
+    doc.fontSize(9)
     relatedMovements.forEach((movement, index) => {
       if (currentY > 700) {
         doc.addPage()
@@ -178,13 +179,13 @@ export async function GET(
       currentY += 20
     }
 
-    doc.fontSize(14).font('Times-Bold')
+    doc.fontSize(14)
     doc.text('TOTAL:', 400, currentY, { width: 100, align: 'right' })
     doc.text(`$${total.toLocaleString('es-CO')}`, 450, currentY, { width: 100, align: 'right' })
     currentY += 30
 
     // Información de pago
-    doc.fontSize(12).font('Times-Roman')
+    doc.fontSize(12)
     doc.text('CONDICIONES DE PAGO', { underline: true })
     doc.moveDown(0.5)
     doc.fontSize(10)
