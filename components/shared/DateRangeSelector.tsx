@@ -33,6 +33,7 @@ export function DateRangeSelector({
   })
   const [selectingStart, setSelectingStart] = useState(true)
   const [tempFrom, setTempFrom] = useState<Date | null>(null)
+  const [hoveredDate, setHoveredDate] = useState<Date | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Resetear estado cuando se cierra el modal
@@ -141,8 +142,21 @@ export function DateRangeSelector({
     const normalizedTo = normalizeDate(to)
     
     // Si estamos seleccionando el fin y hay una fecha de inicio temporal,
-    // no mostrar rango hasta que se seleccione la fecha final
+    // mostrar preview del rango desde tempFrom hasta hoveredDate o la fecha actual
     if (!selectingStart && tempFrom) {
+      const tempFromNormalized = normalizeDate(tempFrom)
+      const hoveredNormalized = hoveredDate ? normalizeDate(hoveredDate) : null
+      
+      // Si hay hover, mostrar rango desde tempFrom hasta hoveredDate
+      if (hoveredNormalized) {
+        if (hoveredNormalized >= tempFromNormalized) {
+          return normalizedDate >= tempFromNormalized && normalizedDate <= hoveredNormalized
+        } else {
+          return normalizedDate >= hoveredNormalized && normalizedDate <= tempFromNormalized
+        }
+      }
+      
+      // Si no hay hover, no mostrar rango
       return false
     }
     
@@ -386,14 +400,24 @@ export function DateRangeSelector({
                     key={idx}
                     type="button"
                     onClick={() => handleDateClick(day.date)}
+                    onMouseEnter={() => {
+                      if (!selectingStart && tempFrom && day.isCurrentMonth) {
+                        setHoveredDate(day.date)
+                      }
+                    }}
+                    onMouseLeave={() => {
+                      if (!selectingStart && tempFrom) {
+                        setHoveredDate(null)
+                      }
+                    }}
                     disabled={!day.isCurrentMonth}
                     className={cn(
                       "h-8 w-8 text-xs rounded-md transition-colors relative",
                       !day.isCurrentMonth && "text-gray-300 cursor-not-allowed",
                       day.isCurrentMonth && !isSelected && !inRange && "text-gray-700 hover:bg-gray-100",
-                      isSelected && "bg-primary text-white font-semibold hover:bg-primary/90",
+                      isSelected && "bg-primary text-white font-semibold hover:bg-primary/90 z-10",
                       inRange && !isSelected && "bg-primary/10 text-primary font-medium",
-                      isToday && !isSelected && "ring-2 ring-primary ring-offset-1",
+                      isToday && !isSelected && !inRange && "ring-2 ring-primary ring-offset-1",
                       isStart && "rounded-l-md",
                       isEnd && "rounded-r-md"
                     )}
