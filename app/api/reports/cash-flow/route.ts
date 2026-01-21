@@ -59,28 +59,23 @@ export async function GET(req: NextRequest) {
       }
     })
     
-    // Calcular contado recibido de ventas
+    // Calcular contado recibido de ventas - INCLUYE créditos pagados
+    // Los créditos pagados ya están sumados al cashAmount del movimiento
     const salesCashAmount = salesMovements.reduce((sum, m) => {
       if (m.paymentType === "cash") {
+        // Ventas en contado: usar cashAmount o totalAmount
         return sum + Number(m.cashAmount || m.totalAmount)
       } else if (m.paymentType === "mixed") {
+        // Ventas mixtas: usar cashAmount (incluye crédito pagado si aplica)
         return sum + Number(m.cashAmount || 0)
+      } else if (m.paymentType === "credit") {
+        // Ventas a crédito: solo sumar si el crédito fue pagado
+        if (m.creditPaid) {
+          return sum + Number(m.cashAmount || 0)
+        }
       }
       return sum
     }, 0)
-    
-    // Calcular créditos pagados (solo los que tienen creditPaid = true y creditPaidDate)
-    // Ahora que los créditos pagados se suman al cashAmount, esta lógica se simplifica
-    const paidCredits = salesMovements
-      .filter(m => m.creditPaid && m.creditPaidDate && (m.paymentType === "credit" || m.paymentType === "mixed"))
-      .reduce((sum, m) => {
-        // Los créditos pagados ya están incluidos en el cashAmount del movimiento
-        // Solo sumar si es un crédito puro que no tenía contado inicialmente
-        if (m.paymentType === "credit" && (!m.cashAmount || Number(m.cashAmount) === 0)) {
-          return sum + Number(m.totalAmount)
-        }
-        return sum
-      }, 0)
     
     // Calcular contado pagado en compras
     const purchasesCashAmount = purchaseMovements.reduce((sum, m) => {
@@ -102,7 +97,8 @@ export async function GET(req: NextRequest) {
       return sum
     }, 0)
     
-    const cashIn = salesCashAmount + paidCredits
+    // cashIn ya incluye los créditos pagados (están en salesCashAmount)
+    const cashIn = salesCashAmount
     const cashOut = purchasesCashAmount + purchasesCreditAmount
     const netCashFlow = cashIn - cashOut
     

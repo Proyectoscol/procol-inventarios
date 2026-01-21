@@ -9,6 +9,7 @@ import { BackButton } from "@/components/shared/BackButton"
 import { toast } from "sonner"
 import { Calendar, DollarSign, AlertTriangle, CheckCircle, Clock } from "lucide-react"
 import { formatColombiaDate, formatColombiaTime } from "@/lib/date-utils"
+import { CreditPaymentModal } from "@/components/modals/CreditPaymentModal"
 
 export default function CreditsPage() {
   const { data: session, status } = useSession()
@@ -19,7 +20,7 @@ export default function CreditsPage() {
   const [summary, setSummary] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "overdue" | "paid">("all")
-  const [showPaymentModal, setShowPaymentModal] = useState<any>(null)
+  const [selectedCredit, setSelectedCredit] = useState<any>(null)
 
   // Determinar la ruta de retorno basada en el referrer o usar /dashboard/settings por defecto
   const getBackHref = () => {
@@ -87,70 +88,10 @@ export default function CreditsPage() {
     }
   }
 
-  const handleMarkAsPaid = async (movementId: string, paidDate?: string) => {
-    try {
-      const res = await fetch(`/api/movements/${movementId}/mark-paid`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          paidDate: paidDate || new Date().toISOString()
-        })
-      })
-
-      if (res.ok) {
-        toast.success("✅ Crédito marcado como pagado", {
-          description: "El crédito se ha registrado como pagado correctamente",
-          duration: 3000
-        })
-        // Recargar créditos
-        if (selectedCompanyId) {
-          fetchCredits(selectedCompanyId, statusFilter)
-        }
-      } else {
-        const error = await res.json()
-        throw new Error(error.error || "Error al marcar como pagado")
-      }
-    } catch (error: any) {
-      toast.error("❌ Error al marcar crédito como pagado", {
-        description: error.message || "Por favor, intenta nuevamente",
-        duration: 4000
-      })
-    }
-  }
-
-  const handlePayment = async (movement: any, paymentAmount: number, newDueDate?: string, notes?: string) => {
-    try {
-      const res = await fetch(`/api/credits`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          movementId: movement.id,
-          paymentAmount,
-          newDueDate,
-          notes
-        })
-      })
-
-      if (res.ok) {
-        const result = await res.json()
-        toast.success("✅ Abono registrado exitosamente", {
-          description: `Abono de $${paymentAmount.toLocaleString("es-CO")} registrado. Crédito restante: $${result.remainingCredit.toLocaleString("es-CO")}`,
-          duration: 4000
-        })
-        setShowPaymentModal(null)
-        // Recargar créditos
-        if (selectedCompanyId) {
-          fetchCredits(selectedCompanyId, statusFilter)
-        }
-      } else {
-        const error = await res.json()
-        throw new Error(error.error || "Error al registrar abono")
-      }
-    } catch (error: any) {
-      toast.error("❌ Error al registrar abono", {
-        description: error.message || "Por favor, intenta nuevamente",
-        duration: 4000
-      })
+  const handlePaymentSuccess = () => {
+    // Recargar créditos después de un pago exitoso
+    if (selectedCompanyId) {
+      fetchCredits(selectedCompanyId, statusFilter)
     }
   }
 
@@ -377,11 +318,10 @@ export default function CreditsPage() {
                               </span>
                             )}
                           </div>
-                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mb-3">
                             <p><span className="font-medium">Cliente:</span> {credit.customer?.name || "Sin cliente"}</p>
                             <p><span className="font-medium">Producto:</span> {credit.product?.name}</p>
                             <p><span className="font-medium">Bodega:</span> {credit.warehouse?.name}</p>
-                            <p><span className="font-medium">Monto:</span> ${credit.creditAmount.toLocaleString("es-CO")}</p>
                             {credit.creditDueDate && (
                               <p>
                                 <span className="font-medium">Vence:</span> {formatColombiaDate(credit.creditDueDate)}
@@ -398,15 +338,52 @@ export default function CreditsPage() {
                               </p>
                             )}
                           </div>
+                          
+                          {/* Resumen de deuda */}
+                          <div className="bg-white/50 rounded-lg p-3 space-y-1 text-sm border">
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Crédito Original:</span>
+                              <span className="font-semibold">${(credit.originalCredit || credit.creditAmount).toLocaleString("es-CO")}</span>
+                            </div>
+                            {credit.cashAmount && credit.cashAmount > 0 && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Total Abonado:</span>
+                                <span className="font-semibold text-green-600">${credit.cashAmount.toLocaleString("es-CO")}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between pt-1 border-t">
+                              <span className="font-semibold">Saldo Pendiente:</span>
+                              <span className="font-bold text-lg text-orange-600">
+                                ${(credit.pendingBalance || credit.creditAmount).toLocaleString("es-CO")}
+                              </span>
+                            </div>
+                          </div>
                         </div>
                         {!credit.creditPaid && (
-                          <Button
-                            onClick={() => handleMarkAsPaid(credit.id)}
-                            size="sm"
-                            className="ml-4"
-                          >
-                            Marcar como Pagado
-                          </Button>
+                          <div className="flex flex-col gap-2 ml-4">
+                            <Button
+                              onClick={() => setSelectedCredit(credit)}
+                              size="sm"
+                              className="w-full"
+                            >
+                              <DollarSign className="h-4 w-4 mr-2" />
+                              Agregar Pago
+                            </Button>
+                            {(credit.pendingBalance || credit.creditAmount) > 0 && (
+                              <Button
+                                onClick={() => {
+                                  setSelectedCredit(credit)
+                                  // El modal manejará el pago completo
+                                }}
+                                size="sm"
+                                variant="outline"
+                                className="w-full"
+                              >
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                                Pago Completo
+                              </Button>
+                            )}
+                          </div>
                         )}
                       </div>
                     </CardContent>
@@ -422,6 +399,27 @@ export default function CreditsPage() {
           <BackButton href={getBackHref()} />
         </div>
       </div>
+
+      {/* Modal de pago */}
+      {selectedCredit && (
+        <CreditPaymentModal
+          open={!!selectedCredit}
+          onClose={() => setSelectedCredit(null)}
+          credit={{
+            id: selectedCredit.id,
+            movementNumber: selectedCredit.movementNumber,
+            customer: selectedCredit.customer,
+            product: selectedCredit.product,
+            warehouse: selectedCredit.warehouse,
+            creditAmount: selectedCredit.originalCredit || (selectedCredit.creditAmount + (selectedCredit.cashAmount || 0)),
+            cashAmount: selectedCredit.cashAmount,
+            totalAmount: selectedCredit.totalAmount,
+            creditDueDate: selectedCredit.creditDueDate,
+            creditDays: selectedCredit.creditDays
+          }}
+          onSuccess={handlePaymentSuccess}
+        />
+      )}
     </div>
   )
 }

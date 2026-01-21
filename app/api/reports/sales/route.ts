@@ -62,16 +62,20 @@ export async function GET(req: NextRequest) {
       _count: true
     })
     
-    // Calcular contado correctamente basándose en paymentType
+    // Calcular contado correctamente - INCLUYE créditos pagados
     const calculatedCashAmount = movements.reduce((sum, m) => {
       if (m.paymentType === "cash") {
-        // Si es contado, usar cashAmount si existe, sino usar totalAmount
+        // Ventas en contado: usar cashAmount o totalAmount
         return sum + Number(m.cashAmount ?? m.totalAmount)
       } else if (m.paymentType === "mixed") {
-        // Si es mixto, usar cashAmount (debe estar guardado)
+        // Ventas mixtas: usar cashAmount (incluye crédito pagado si aplica)
         return sum + Number(m.cashAmount ?? 0)
+      } else if (m.paymentType === "credit") {
+        // Ventas a crédito: solo sumar si el crédito fue pagado
+        if (m.creditPaid) {
+          return sum + Number(m.cashAmount || 0)
+        }
       }
-      // Si es crédito, no sumar nada a contado
       return sum
     }, 0)
     

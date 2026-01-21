@@ -75,15 +75,25 @@ export async function GET(req: NextRequest) {
         isOverdue = daysDiff > 0
       }
 
+      // Calcular saldo pendiente real (considerando abonos)
+      // El monto original del crédito = creditAmount (actual) + cashAmount (abonado)
+      // Esto funciona porque cuando se abona, se reduce creditAmount y se aumenta cashAmount
+      const currentCredit = Number(m.creditAmount || 0)
+      const totalPaid = Number(m.cashAmount || 0)
+      const originalCredit = currentCredit + totalPaid // Monto original del crédito
+      const pendingBalance = currentCredit // El saldo pendiente es el creditAmount actual
+
       return {
         ...m,
-        creditAmount: Number(m.creditAmount),
-        cashAmount: m.cashAmount ? Number(m.cashAmount) : null,
+        creditAmount: Number(m.creditAmount), // Monto original del crédito
+        cashAmount: m.cashAmount ? Number(m.cashAmount) : null, // Total abonado
         totalAmount: Number(m.totalAmount),
         creditDueDate: dueDate,
         daysOverdue,
         isOverdue,
-        status: m.creditPaid ? "paid" : (isOverdue ? "overdue" : "pending")
+        status: m.creditPaid ? "paid" : (isOverdue ? "overdue" : "pending"),
+        pendingBalance, // Saldo pendiente real
+        originalCredit // Monto original del crédito
       }
     })
 
@@ -95,10 +105,10 @@ export async function GET(req: NextRequest) {
       paid: creditsWithStatus.filter(c => c.status === "paid").length,
       totalPendingAmount: creditsWithStatus
         .filter(c => !c.creditPaid)
-        .reduce((sum, c) => sum + c.creditAmount, 0),
+        .reduce((sum, c) => sum + (c.pendingBalance || c.creditAmount), 0),
       totalOverdueAmount: creditsWithStatus
         .filter(c => c.isOverdue)
-        .reduce((sum, c) => sum + c.creditAmount, 0)
+        .reduce((sum, c) => sum + (c.pendingBalance || c.creditAmount), 0)
     }
 
     return NextResponse.json({
@@ -123,7 +133,7 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await req.json()
-    const { movementId, paymentAmount, newDueDate, notes } = data
+    const { movementId, paymentAmount, newDueDate, newCreditDays, notes } = data
 
     if (!movementId || !paymentAmount || paymentAmount <= 0) {
       return NextResponse.json({ error: "Datos inválidos" }, { status: 400 })
@@ -204,7 +214,11 @@ export async function POST(req: NextRequest) {
         }),
         // Si hay nueva fecha de vencimiento, actualizarla
         ...(newDueDate && {
-          creditDueDate: new Date(newDueDate)
+          creditDueDate: new Date(newDueDate),
+          // Si se especifican nuevos días de crédito, actualizarlos
+          ...(newCreditDays && {
+            creditDays: newCreditDays
+          })
         })
       },
       include: {

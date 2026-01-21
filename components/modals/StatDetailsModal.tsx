@@ -98,10 +98,13 @@ export function StatDetailsModal({
         // Para flujo de caja, calcular entradas y salidas
         filteredMovements.forEach((m: any) => {
           if (m.type === "sale") {
-            // Entradas: solo el contado de las ventas
+            // Entradas: contado de las ventas (incluye créditos pagados)
             if (m.paymentType === "cash") {
               inflows += Number(m.totalAmount || 0)
             } else if (m.paymentType === "mixed") {
+              inflows += Number(m.cashAmount || 0)
+            } else if (m.paymentType === "credit" && m.creditPaid) {
+              // Crédito pagado = dinero en caja (efectivo)
               inflows += Number(m.cashAmount || 0)
             }
           } else if (m.type === "purchase") {
@@ -128,8 +131,14 @@ export function StatDetailsModal({
           sum + Number(m.quantity || 0), 0
         )
         cashAmount = filteredMovements.reduce((sum: number, m: any) => {
-          if (m.paymentType === "cash") return sum + Number(m.totalAmount || 0)
-          if (m.paymentType === "mixed") return sum + Number(m.cashAmount || 0)
+          if (m.paymentType === "cash") {
+            return sum + Number(m.totalAmount || 0)
+          } else if (m.paymentType === "mixed") {
+            return sum + Number(m.cashAmount || 0)
+          } else if (m.paymentType === "credit" && m.creditPaid) {
+            // Crédito pagado = dinero en caja (efectivo)
+            return sum + Number(m.cashAmount || 0)
+          }
           return sum
         }, 0)
         creditAmount = filteredMovements.reduce((sum: number, m: any) => {
