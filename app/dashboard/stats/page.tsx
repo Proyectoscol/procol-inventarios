@@ -178,82 +178,87 @@ export default function StatsPage() {
         <h1 className="text-3xl font-bold mb-6">Estadísticas y Reportes</h1>
 
         {/* Filtros de Bodegas y Fechas */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Filtros de Bodegas */}
-          {warehouses.length > 0 && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
+        <div className="mb-6">
+          {/* Botón de Restablecer Filtros */}
+          <div className="flex justify-end mb-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={resetFilters}
+              disabled={isLoadingStats}
+              className="flex items-center gap-2"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Restablecer Todos los Filtros
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Filtros de Bodegas */}
+            {warehouses.length > 0 && (
+              <Card>
+                <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Warehouse className="h-5 w-5" />
                     Filtrar por Bodegas
                   </CardTitle>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={resetFilters}
-                    className="flex items-center gap-2"
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                    Restablecer
-                  </Button>
-                </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {warehouses.map((warehouse) => {
+                      const isSelected = selectedWarehouseIds.has(warehouse.id)
+                      return (
+                        <Button
+                          key={warehouse.id}
+                          variant={isSelected ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => toggleWarehouse(warehouse.id)}
+                          disabled={isLoadingStats}
+                          className={cn(
+                            "transition-all",
+                            isSelected && "bg-primary text-primary-foreground",
+                            isLoadingStats && "opacity-50 cursor-not-allowed"
+                          )}
+                        >
+                          {warehouse.name}
+                        </Button>
+                      )
+                    })}
+                  </div>
+                  {selectedWarehouseIds.size === 0 && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      ⚠️ No hay bodegas seleccionadas. Selecciona al menos una para ver estadísticas.
+                    </p>
+                  )}
+                  {isLoadingStats && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Cargando estadísticas...
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Filtros de Fecha */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  Filtrar por Período
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {warehouses.map((warehouse) => {
-                    const isSelected = selectedWarehouseIds.has(warehouse.id)
-                    return (
-                      <Button
-                        key={warehouse.id}
-                        variant={isSelected ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => toggleWarehouse(warehouse.id)}
-                        disabled={isLoadingStats}
-                        className={cn(
-                          "transition-all",
-                          isSelected && "bg-primary text-primary-foreground",
-                          isLoadingStats && "opacity-50 cursor-not-allowed"
-                        )}
-                      >
-                        {warehouse.name}
-                      </Button>
-                    )
-                  })}
-                </div>
-                {selectedWarehouseIds.size === 0 && (
-                  <p className="text-sm text-muted-foreground mt-2">
-                    ⚠️ No hay bodegas seleccionadas. Selecciona al menos una para ver estadísticas.
-                  </p>
-                )}
-                {isLoadingStats && (
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Cargando estadísticas...
-                  </p>
-                )}
+                <DateRangeSelector
+                  from={dateRange.from}
+                  to={dateRange.to}
+                  onChange={handleDateRangeChange}
+                />
+                <p className="text-sm text-muted-foreground mt-3">
+                  Selecciona un rango de fechas para ver las estadísticas del período
+                </p>
               </CardContent>
             </Card>
-          )}
-
-          {/* Filtros de Fecha */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                Filtrar por Período
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <DateRangeSelector
-                from={dateRange.from}
-                to={dateRange.to}
-                onChange={handleDateRangeChange}
-              />
-              <p className="text-sm text-muted-foreground mt-3">
-                Selecciona un rango de fechas para ver las estadísticas del período
-              </p>
-            </CardContent>
-          </Card>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
