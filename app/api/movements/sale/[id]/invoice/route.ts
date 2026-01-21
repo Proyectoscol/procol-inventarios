@@ -21,12 +21,7 @@ export async function GET(
       where: { id: movementId },
       include: {
         customer: true,
-        product: {
-          include: {
-            company: true,
-            images: true
-          }
-        },
+        product: true,
         warehouse: true
       }
     })
@@ -53,12 +48,7 @@ export async function GET(
         type: "sale"
       },
       include: {
-        product: {
-          include: {
-            images: true,
-            company: true
-          }
-        },
+        product: true,
         warehouse: true,
         customer: true
       },
@@ -160,16 +150,8 @@ export async function GET(
       const unitPrice = Number(movement.unitPrice)
       const totalAmount = Number(movement.totalAmount)
 
-      // Producto (con imagen si existe)
-      let imageY = currentY
-      if (movement.product.images && movement.product.images.length > 0) {
-        try {
-          // Intentar cargar la imagen (simplificado, en producción usar buffer)
-          // Por ahora solo mostramos el nombre
-        } catch (e) {
-          // Ignorar errores de imagen
-        }
-      }
+      // Producto (con imagen si existe en imageBase64)
+      // Las imágenes están en el campo imageBase64 del producto
 
       doc.text(productName, 50, currentY, { width: 140 })
       doc.text(warehouseName, 200, currentY, { width: 90 })

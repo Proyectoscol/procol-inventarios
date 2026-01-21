@@ -48,11 +48,7 @@ export async function GET(
         type: "sale"
       },
       include: {
-        product: {
-          include: {
-            images: true
-          }
-        },
+        product: true,
         warehouse: true,
         customer: true
       },
