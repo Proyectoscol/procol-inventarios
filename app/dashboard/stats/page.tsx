@@ -80,14 +80,6 @@ export default function StatsPage() {
       } else {
         newSet.add(warehouseId)
       }
-      // Forzar actualización inmediata
-      const newIds = Array.from(newSet)
-      if (selectedCompanyId) {
-        // Usar setTimeout para evitar actualizaciones simultáneas
-        setTimeout(() => {
-          fetchStats(selectedCompanyId, newIds)
-        }, 0)
-      }
       return newSet
     })
   }
