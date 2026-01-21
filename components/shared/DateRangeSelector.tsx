@@ -26,9 +26,29 @@ export function DateRangeSelector({
   className
 }: DateRangeSelectorProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const [currentMonth, setCurrentMonth] = useState(new Date(from))
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const fromDate = new Date(from)
+    fromDate.setHours(0, 0, 0, 0)
+    return fromDate
+  })
   const [selectingStart, setSelectingStart] = useState(true)
+  const [tempFrom, setTempFrom] = useState<Date | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  // Resetear estado cuando se cierra el modal
+  useEffect(() => {
+    if (!isOpen) {
+      setSelectingStart(true)
+      setTempFrom(null)
+    }
+  }, [isOpen])
+
+  // Actualizar currentMonth cuando cambia el rango
+  useEffect(() => {
+    const fromDate = new Date(from)
+    fromDate.setHours(0, 0, 0, 0)
+    setCurrentMonth(fromDate)
+  }, [from])
 
   // Cerrar al hacer click fuera
   useEffect(() => {
@@ -84,30 +104,66 @@ export function DateRangeSelector({
     return days
   }
 
+  const normalizeDate = (date: Date): Date => {
+    const normalized = new Date(date)
+    normalized.setHours(0, 0, 0, 0)
+    return normalized
+  }
+
   const handleDateClick = (date: Date) => {
+    const normalizedDate = normalizeDate(date)
+    
     if (selectingStart) {
-      onChange(date, to)
+      // Seleccionar fecha de inicio
+      setTempFrom(normalizedDate)
       setSelectingStart(false)
     } else {
-      if (date < from) {
+      // Seleccionar fecha de fin
+      const startDate = tempFrom || normalizeDate(from)
+      
+      if (normalizedDate < startDate) {
         // Si la fecha final es anterior a la inicial, intercambiar
-        onChange(date, from)
+        onChange(normalizedDate, startDate)
       } else {
-        onChange(from, date)
+        onChange(startDate, normalizedDate)
       }
       setIsOpen(false)
+      setSelectingStart(true)
+      setTempFrom(null)
     }
   }
 
   const isDateInRange = (date: Date) => {
-    const dateStr = date.toDateString()
-    const fromStr = from.toDateString()
-    const toStr = to.toDateString()
-    return dateStr >= fromStr && dateStr <= toStr
+    const normalizedDate = normalizeDate(date)
+    const normalizedFrom = normalizeDate(from)
+    const normalizedTo = normalizeDate(to)
+    const currentFrom = tempFrom ? normalizeDate(tempFrom) : normalizedFrom
+    
+    // Si estamos seleccionando el fin, mostrar el rango temporal
+    if (!selectingStart && tempFrom) {
+      return normalizedDate >= currentFrom && normalizedDate <= normalizedDate
+    }
+    
+    return normalizedDate >= normalizedFrom && normalizedDate <= normalizedTo
   }
 
   const isDateSelected = (date: Date) => {
-    return date.toDateString() === from.toDateString() || date.toDateString() === to.toDateString()
+    const normalizedDate = normalizeDate(date)
+    const normalizedFrom = normalizeDate(from)
+    const normalizedTo = normalizeDate(to)
+    const currentFrom = tempFrom ? normalizeDate(tempFrom) : normalizedFrom
+    
+    // Si estamos seleccionando inicio, resaltar la fecha temporal
+    if (selectingStart && tempFrom) {
+      return normalizedDate.getTime() === currentFrom.getTime()
+    }
+    
+    // Si estamos seleccionando fin, resaltar ambas fechas
+    if (!selectingStart && tempFrom) {
+      return normalizedDate.getTime() === currentFrom.getTime() || normalizedDate.getTime() === normalizedDate.getTime()
+    }
+    
+    return normalizedDate.getTime() === normalizedFrom.getTime() || normalizedDate.getTime() === normalizedTo.getTime()
   }
 
   const navigateMonth = (direction: "prev" | "next") => {
@@ -304,22 +360,39 @@ export function DateRangeSelector({
             {/* Días del mes */}
             <div className="grid grid-cols-7 gap-1">
               {days.map((day, idx) => {
+                const normalizedDay = normalizeDate(day.date)
                 const isSelected = isDateSelected(day.date)
-                const inRange = isDateInRange(day.date)
-                const isToday = day.date.toDateString() === new Date().toDateString()
+                const inRange = isDateInRange(day.date) && day.isCurrentMonth
+                const isToday = (() => {
+                  const today = normalizeDate(new Date())
+                  return normalizedDay.getTime() === today.getTime()
+                })()
+                const isStart = (() => {
+                  const currentFrom = tempFrom ? normalizeDate(tempFrom) : normalizeDate(from)
+                  return normalizedDay.getTime() === currentFrom.getTime() && day.isCurrentMonth
+                })()
+                const isEnd = (() => {
+                  if (!selectingStart && tempFrom) {
+                    return false // Aún no hay fecha final seleccionada
+                  }
+                  return normalizedDay.getTime() === normalizeDate(to).getTime() && day.isCurrentMonth
+                })()
 
                 return (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => handleDateClick(day.date)}
+                    disabled={!day.isCurrentMonth}
                     className={cn(
-                      "h-8 w-8 text-xs rounded-md transition-colors",
-                      !day.isCurrentMonth && "text-gray-300",
-                      day.isCurrentMonth && "text-gray-700 hover:bg-gray-100",
-                      isSelected && "bg-primary text-white font-semibold",
-                      inRange && !isSelected && "bg-primary/20",
-                      isToday && !isSelected && "border-2 border-primary"
+                      "h-8 w-8 text-xs rounded-md transition-colors relative",
+                      !day.isCurrentMonth && "text-gray-300 cursor-not-allowed",
+                      day.isCurrentMonth && !isSelected && !inRange && "text-gray-700 hover:bg-gray-100",
+                      isSelected && "bg-primary text-white font-semibold hover:bg-primary/90",
+                      inRange && !isSelected && "bg-primary/10 text-primary font-medium",
+                      isToday && !isSelected && "ring-2 ring-primary ring-offset-1",
+                      isStart && "rounded-l-md",
+                      isEnd && "rounded-r-md"
                     )}
                   >
                     {day.date.getDate()}
@@ -328,11 +401,20 @@ export function DateRangeSelector({
               })}
             </div>
 
-            {/* Instrucciones */}
-            <div className="mt-4 text-xs text-gray-500 text-center">
-              {selectingStart 
-                ? "Selecciona la fecha de inicio" 
-                : "Selecciona la fecha de fin"}
+            {/* Instrucciones y preview */}
+            <div className="mt-4 space-y-2">
+              <div className="text-xs text-gray-500 text-center">
+                {selectingStart 
+                  ? "Selecciona la fecha de inicio" 
+                  : "Selecciona la fecha de fin"}
+              </div>
+              {tempFrom && (
+                <div className="text-xs text-center bg-blue-50 border border-blue-200 rounded p-2">
+                  <span className="font-semibold text-blue-700">
+                    Desde: {formatShortDate(tempFrom)}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
