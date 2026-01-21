@@ -65,7 +65,7 @@ export function QuickProductCreationModal({
       name: initialProductName,
       description: "",
       imageBase64: "",
-      minStockThreshold: 10,
+      minStockThreshold: 0,
       warehouseId: ""
     }
   })

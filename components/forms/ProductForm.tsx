@@ -37,7 +37,7 @@ export function ProductForm({ companyId, product, onSuccess, onCancel }: Product
       name: product?.name || "",
       description: product?.description || "",
       imageBase64: product?.imageBase64 || "",
-      minStockThreshold: product?.minStockThreshold || 10
+      minStockThreshold: product?.minStockThreshold || 0
     }
   })
 

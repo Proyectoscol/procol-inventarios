@@ -26,7 +26,7 @@ export const productSchema = z.object({
   name: z.string().min(1, "El nombre del producto es requerido"),
   description: z.string().optional(),
   imageBase64: z.string().optional(),
-  minStockThreshold: z.number().int().min(0).default(10)
+  minStockThreshold: z.number().int().min(0).default(0)
 })
 
 export const purchaseSchema = z.object({

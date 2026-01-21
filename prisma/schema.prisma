@@ -107,7 +107,7 @@ model Product {
   description       String?
   imageBase64       String?   @db.Text // Imagen comprimida en base64
   companyId         String
-  minStockThreshold Int       @default(10) // Umbral mínimo para alertas
+  minStockThreshold Int       @default(0) // Umbral mínimo para alertas
   deletedAt         DateTime? // Soft delete: fecha de eliminación (null = activo)
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt

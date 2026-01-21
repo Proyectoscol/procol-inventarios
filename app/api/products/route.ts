@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
         description: data.description,
         imageBase64,
         companyId: data.companyId,
-        minStockThreshold: data.minStockThreshold || 10
+        minStockThreshold: data.minStockThreshold || 0
       }
     })
     
