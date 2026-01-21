@@ -95,15 +95,13 @@ export function DashboardHeader() {
 
             {/* Mobile: Company selector and menu button */}
             <div className="md:hidden flex items-center space-x-2 flex-1 min-w-0">
-              <div className="flex-1 min-w-0">
-                <CompanySelector
-                  companies={companies}
-                  selectedCompanyId={selectedCompanyId}
-                  onSelect={setSelectedCompanyId}
-                  loading={loading}
-                  className="w-full"
-                />
-              </div>
+              <CompanySelector
+                companies={companies}
+                selectedCompanyId={selectedCompanyId}
+                onSelect={setSelectedCompanyId}
+                loading={loading}
+                isMobile={true}
+              />
               <Button
                 variant="ghost"
                 size="sm"

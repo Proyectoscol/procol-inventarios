@@ -10,6 +10,7 @@ interface CompanySelectorProps {
   onSelect: (companyId: string) => void
   loading?: boolean
   className?: string
+  isMobile?: boolean
 }
 
 export function CompanySelector({
@@ -17,7 +18,8 @@ export function CompanySelector({
   selectedCompanyId,
   onSelect,
   loading = false,
-  className
+  className,
+  isMobile = false
 }: CompanySelectorProps) {
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -53,20 +55,27 @@ export function CompanySelector({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "flex items-center space-x-1.5 px-2 py-1.5 rounded-md border border-gray-300",
+          "flex items-center space-x-1 rounded-md border border-gray-300",
           "bg-white hover:bg-gray-50 transition-colors",
           "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1",
-          "text-sm font-medium text-gray-700",
-          "min-w-0" // Permite que el contenido se trunque
+          "font-medium text-gray-700",
+          "min-w-0", // Permite que el contenido se trunque
+          isMobile 
+            ? "px-1.5 py-1 text-xs h-7" 
+            : "px-2 py-1.5 text-sm"
         )}
-        style={{ maxWidth: "100px" }} // Reducido a aproximadamente la mitad del tamaño original
+        style={{ maxWidth: isMobile ? "80px" : "100px" }} // Más compacto en móvil
       >
-        <Building2 className="h-3.5 w-3.5 text-gray-600 flex-shrink-0" />
+        <Building2 className={cn(
+          "text-gray-600 flex-shrink-0",
+          isMobile ? "h-3 w-3" : "h-3.5 w-3.5"
+        )} />
         <span className="truncate flex-1 min-w-0 text-left">
           {selectedCompany?.name || "Seleccionar"}
         </span>
         <ChevronDown className={cn(
-          "h-3.5 w-3.5 text-gray-500 flex-shrink-0 transition-transform",
+          "text-gray-500 flex-shrink-0 transition-transform",
+          isMobile ? "h-3 w-3" : "h-3.5 w-3.5",
           isOpen && "transform rotate-180"
         )} />
       </button>
