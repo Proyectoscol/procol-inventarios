@@ -873,7 +873,7 @@ export function SaleForm({ companyId, warehouses, customers: initialCustomers = 
                 Registrando...
               </>
             ) : (
-              "✅ Registrar Venta"
+              "✅ Registrar"
             )}
           </Button>
         </div>

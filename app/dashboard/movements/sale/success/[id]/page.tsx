@@ -105,6 +105,27 @@ export default function SaleSuccessPage() {
           </CardContent>
         </Card>
 
+        {/* Botones de Acción - Mejorados y más grandes */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <Button
+            onClick={() => router.push("/dashboard")}
+            variant="outline"
+            className="flex-1 h-16 text-lg font-semibold shadow-md hover:shadow-lg transition-all border-2 hover:bg-gray-50"
+            size="lg"
+          >
+            <Home className="h-6 w-6 mr-3" />
+            Volver al Dashboard
+          </Button>
+          <Button
+            onClick={handleViewPDF}
+            className="flex-1 h-16 text-lg font-semibold bg-green-600 hover:bg-green-700 shadow-md hover:shadow-lg transition-all"
+            size="lg"
+          >
+            <FileText className="h-6 w-6 mr-3" />
+            Ver Factura PDF
+          </Button>
+        </div>
+
         {/* Información de la Venta */}
         <Card className="mb-6">
           <CardHeader>
@@ -189,27 +210,6 @@ export default function SaleSuccessPage() {
             </div>
           </CardContent>
         </Card>
-
-        {/* Botones de Acción */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <Button
-            onClick={() => router.push("/dashboard")}
-            variant="outline"
-            className="flex-1"
-            size="lg"
-          >
-            <Home className="h-5 w-5 mr-2" />
-            Volver al Dashboard
-          </Button>
-          <Button
-            onClick={handleViewPDF}
-            className="flex-1 bg-green-600 hover:bg-green-700"
-            size="lg"
-          >
-            <FileText className="h-5 w-5 mr-2" />
-            Ver Factura PDF
-          </Button>
-        </div>
       </div>
     </div>
   )
