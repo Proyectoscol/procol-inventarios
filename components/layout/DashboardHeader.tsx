@@ -55,7 +55,7 @@ export function DashboardHeader() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo y título */}
-            <div className="flex items-center">
+            <div className="flex items-center flex-shrink-0">
               <Link href="/dashboard" className="flex items-center space-x-2">
                 <Package className="h-6 w-6 text-primary" />
                 <span className="text-xl font-bold text-gray-900">InventarIA</span>
@@ -63,7 +63,7 @@ export function DashboardHeader() {
             </div>
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center space-x-1">
+            <nav className="hidden md:flex items-center space-x-1 flex-1 justify-center">
               {navigation.map((item) => {
                 const Icon = item.icon
                 return (
@@ -84,7 +84,7 @@ export function DashboardHeader() {
             </nav>
 
             {/* Company selector - Desktop */}
-            <div className="hidden md:flex items-center">
+            <div className="hidden md:flex items-center flex-shrink-0 ml-auto">
               <CompanySelector
                 companies={companies}
                 selectedCompanyId={selectedCompanyId}
@@ -93,8 +93,8 @@ export function DashboardHeader() {
               />
             </div>
 
-            {/* Mobile: Company selector and menu button */}
-            <div className="md:hidden flex items-center space-x-2 flex-1 min-w-0">
+            {/* Mobile: Company selector and menu button - Right aligned */}
+            <div className="md:hidden flex items-center space-x-2 flex-shrink-0 ml-auto">
               <CompanySelector
                 companies={companies}
                 selectedCompanyId={selectedCompanyId}
