@@ -133,20 +133,17 @@ export function DateRangeSelector({
     }
   }
 
-  const isDateInRange = (date: Date) => {
-    if (!day.isCurrentMonth) return false
+  const isDateInRange = (date: Date, isCurrentMonth: boolean) => {
+    if (!isCurrentMonth) return false
     
     const normalizedDate = normalizeDate(date)
     const normalizedFrom = normalizeDate(from)
     const normalizedTo = normalizeDate(to)
-    const currentFrom = tempFrom ? normalizeDate(tempFrom) : normalizedFrom
     
     // Si estamos seleccionando el fin y hay una fecha de inicio temporal,
-    // mostrar el rango desde tempFrom hasta la fecha actual (hover)
+    // no mostrar rango hasta que se seleccione la fecha final
     if (!selectingStart && tempFrom) {
-      // Solo mostrar rango si la fecha está después de tempFrom
-      // El rango completo se mostrará cuando se seleccione la fecha final
-      return false // No mostrar rango hasta que se seleccione la fecha final
+      return false
     }
     
     // Mostrar rango establecido
