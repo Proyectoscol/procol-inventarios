@@ -92,20 +92,22 @@ export async function GET(
     // Número de factura y fecha
     doc.setFontSize(12)
     doc.text(`Factura No: ${relatedMovements[0]?.movementNumber || 'N/A'}`, 20, yPosition)
-    // Formato de fecha más corto para evitar overflow
+    // Formato de fecha más corto y simple
     const fecha = new Date(initialMovement.movementDate)
     const fechaStr = fecha.toLocaleDateString('es-CO', {
       year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+      month: '2-digit',
+      day: '2-digit'
     }) + ' ' + fecha.toLocaleTimeString('es-CO', {
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      hour12: true
     })
-    // Asegurar que la fecha no cause overflow
-    const fechaWidth = doc.getTextWidth(`Fecha: ${fechaStr}`)
-    const fechaX = Math.max(140, 190 - fechaWidth - 5)
-    doc.text(`Fecha: ${fechaStr}`, fechaX, yPosition)
+    // Posicionar fecha alineada a la derecha con margen
+    const fechaText = `Fecha: ${fechaStr}`
+    const fechaWidth = doc.getTextWidth(fechaText)
+    const fechaX = 190 - fechaWidth - 5 // 5mm de margen desde el borde derecho
+    doc.text(fechaText, fechaX, yPosition)
     yPosition += 15
 
     // Información del cliente
@@ -143,71 +145,58 @@ export async function GET(
     doc.line(20, yPosition + 2, 190, yPosition + 2)
     yPosition += 10
 
-    // Headers de tabla con bordes
+    // Definir posiciones de columnas (alineadas con totales)
+    const tableStartX = 20
+    const tableEndX = 190
+    const colProductoEnd = 120  // Producto termina aquí
+    const colCantEnd = 140      // Cantidad termina aquí
+    const colPrecioEnd = 165    // Precio Unit. termina aquí
+    const colTotalEnd = 190     // Total termina aquí (alineado con totales)
+    
+    const pageHeight = doc.internal.pageSize.height
+    const bottomMargin = 50 // Margen para totales y footer
+
+    // Headers de tabla - simple y limpio
     doc.setFontSize(10)
     doc.setFont('helvetica', 'bold')
     
-    // Dibujar encabezado de tabla con bordes
-    const tableStartX = 20
-    const tableEndX = 190
-    const headerY = yPosition - 5
-    const headerHeight = 8
+    // Línea superior de la tabla
+    doc.line(tableStartX, yPosition, tableEndX, yPosition)
     
-    // Borde superior del encabezado
-    doc.line(tableStartX, headerY, tableEndX, headerY)
+    // Texto de encabezados
+    doc.text('Producto', tableStartX + 2, yPosition + 5)
+    doc.text('Cant.', colProductoEnd, yPosition + 5, { align: 'right' })
+    doc.text('Precio Unit.', colCantEnd, yPosition + 5, { align: 'right' })
+    doc.text('Total', colPrecioEnd, yPosition + 5, { align: 'right' })
     
-    // Columnas: Producto (ancho 80), Cant. (ancho 25), Precio Unit. (ancho 35), Total (ancho 30)
-    const col1End = tableStartX + 80  // Producto
-    const col2End = col1End + 25      // Cantidad
-    const col3End = col2End + 35      // Precio Unit.
-    const col4End = tableEndX         // Total
-    
-    // Líneas verticales del encabezado
-    doc.line(col1End, headerY, col1End, headerY + headerHeight)
-    doc.line(col2End, headerY, col2End, headerY + headerHeight)
-    doc.line(col3End, headerY, col3End, headerY + headerHeight)
-    
-    // Texto del encabezado
-    doc.text('Producto', tableStartX + 2, headerY + 5)
-    doc.text('Cant.', col1End + 2, headerY + 5, { align: 'right' })
-    doc.text('Precio Unit.', col2End + 2, headerY + 5, { align: 'right' })
-    doc.text('Total', col3End + 2, headerY + 5, { align: 'right' })
-    
-    // Borde inferior del encabezado
-    doc.line(tableStartX, headerY + headerHeight, tableEndX, headerY + headerHeight)
-    
-    yPosition = headerY + headerHeight + 2
+    // Línea debajo de encabezados
+    yPosition += 8
+    doc.line(tableStartX, yPosition, tableEndX, yPosition)
 
     // Items de la tabla
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(9)
+    yPosition += 5
     
-    const rowHeight = 8
-    const pageHeight = doc.internal.pageSize.height
-    const bottomMargin = 30 // Margen inferior para totales y footer
-    
-    relatedMovements.forEach((movement, index) => {
+    relatedMovements.forEach((movement) => {
       // Verificar si necesitamos una nueva página
-      if (yPosition + rowHeight > pageHeight - bottomMargin) {
+      if (yPosition > pageHeight - bottomMargin) {
         doc.addPage()
         yPosition = 20
         
         // Redibujar encabezado en nueva página
-        const newHeaderY = yPosition
         doc.setFont('helvetica', 'bold')
         doc.setFontSize(10)
-        doc.line(tableStartX, newHeaderY, tableEndX, newHeaderY)
-        doc.line(col1End, newHeaderY, col1End, newHeaderY + headerHeight)
-        doc.line(col2End, newHeaderY, col2End, newHeaderY + headerHeight)
-        doc.line(col3End, newHeaderY, col3End, newHeaderY + headerHeight)
-        doc.text('Producto', tableStartX + 2, newHeaderY + 5)
-        doc.text('Cant.', col1End + 2, newHeaderY + 5, { align: 'right' })
-        doc.text('Precio Unit.', col2End + 2, newHeaderY + 5, { align: 'right' })
-        doc.text('Total', col3End + 2, newHeaderY + 5, { align: 'right' })
-        doc.line(tableStartX, newHeaderY + headerHeight, tableEndX, newHeaderY + headerHeight)
+        doc.line(tableStartX, yPosition, tableEndX, yPosition)
+        doc.text('Producto', tableStartX + 2, yPosition + 5)
+        doc.text('Cant.', colProductoEnd, yPosition + 5, { align: 'right' })
+        doc.text('Precio Unit.', colCantEnd, yPosition + 5, { align: 'right' })
+        doc.text('Total', colPrecioEnd, yPosition + 5, { align: 'right' })
+        yPosition += 8
+        doc.line(tableStartX, yPosition, tableEndX, yPosition)
         doc.setFont('helvetica', 'normal')
         doc.setFontSize(9)
-        yPosition = newHeaderY + headerHeight + 2
+        yPosition += 5
       }
 
       const productName = movement.product.name
@@ -216,65 +205,54 @@ export async function GET(
       const totalAmount = Number(movement.totalAmount)
 
       // Dividir nombre del producto si es muy largo
-      const maxProductWidth = col1End - tableStartX - 4
+      const maxProductWidth = colProductoEnd - tableStartX - 4
       const productLines = doc.splitTextToSize(productName, maxProductWidth)
       
-      // Dibujar bordes de la fila
-      const rowTop = yPosition - 3
-      const rowBottom = yPosition - 3 + (productLines.length * 4) + 2
+      // Calcular altura de la fila basada en líneas del producto
+      const lineHeight = 5
+      const rowHeight = Math.max(8, productLines.length * lineHeight)
       
-      // Líneas verticales
-      doc.line(col1End, rowTop, col1End, rowBottom)
-      doc.line(col2End, rowTop, col2End, rowBottom)
-      doc.line(col3End, rowTop, col3End, rowBottom)
+      // Texto de la fila - alineado verticalmente al centro si hay múltiples líneas
+      const textY = yPosition + (rowHeight / 2) - 2
       
-      // Texto de la fila
-      let textY = yPosition
-      doc.text(productLines, tableStartX + 2, textY, { maxWidth: maxProductWidth })
+      doc.text(productLines, tableStartX + 2, yPosition, { maxWidth: maxProductWidth })
+      doc.text(quantity.toString(), colProductoEnd, textY, { align: 'right' })
+      doc.text(`$${unitPrice.toLocaleString('es-CO')}`, colCantEnd, textY, { align: 'right' })
+      doc.text(`$${totalAmount.toLocaleString('es-CO')}`, colPrecioEnd, textY, { align: 'right' })
       
-      // Si el producto tiene múltiples líneas, centrar verticalmente los otros datos
-      const centerY = textY + (productLines.length - 1) * 2
-      
-      doc.text(quantity.toString(), col1End + 2, centerY, { align: 'right' })
-      doc.text(`$${unitPrice.toLocaleString('es-CO')}`, col2End + 2, centerY, { align: 'right' })
-      doc.text(`$${totalAmount.toLocaleString('es-CO')}`, col3End + 2, centerY, { align: 'right' })
-      
-      // Línea inferior de la fila
-      doc.line(tableStartX, rowBottom, tableEndX, rowBottom)
-      
-      yPosition = rowBottom + 2
+      yPosition += rowHeight + 3
     })
     
-    // Cerrar la tabla con línea final
+    // Línea final de la tabla
     doc.line(tableStartX, yPosition, tableEndX, yPosition)
-    yPosition += 5
+    yPosition += 8
 
-    // Totales - asegurar que estén en la misma página
+    // Totales - asegurar que estén en la misma página y alineados con la columna Total
     if (yPosition > pageHeight - 50) {
       doc.addPage()
       yPosition = 20
     }
     
-    yPosition += 5
-    doc.line(20, yPosition, 190, yPosition)
-    yPosition += 8
-
+    // Usar las mismas posiciones de columna para alineación
+    const totalLabelX = colPrecioEnd - 10 // Un poco antes de la columna de precio
+    const totalValueX = colTotalEnd       // Alineado con la columna Total
+    
     doc.setFontSize(11)
     doc.setFont('helvetica', 'normal')
-    doc.text('Subtotal:', 150, yPosition, { align: 'right' })
-    doc.text(`$${subtotal.toLocaleString('es-CO')}`, 180, yPosition, { align: 'right' })
+    doc.text('Subtotal:', totalLabelX, yPosition, { align: 'right' })
+    doc.text(`$${subtotal.toLocaleString('es-CO')}`, totalValueX, yPosition, { align: 'right' })
     yPosition += 8
 
     if (shippingCost > 0) {
-      doc.text('Envío:', 150, yPosition, { align: 'right' })
-      doc.text(`$${shippingCost.toLocaleString('es-CO')}`, 180, yPosition, { align: 'right' })
+      doc.text('Envío:', totalLabelX, yPosition, { align: 'right' })
+      doc.text(`$${shippingCost.toLocaleString('es-CO')}`, totalValueX, yPosition, { align: 'right' })
       yPosition += 8
     }
 
     doc.setFontSize(14)
     doc.setFont('helvetica', 'bold')
-    doc.text('TOTAL:', 150, yPosition, { align: 'right' })
-    doc.text(`$${total.toLocaleString('es-CO')}`, 180, yPosition, { align: 'right' })
+    doc.text('TOTAL:', totalLabelX, yPosition, { align: 'right' })
+    doc.text(`$${total.toLocaleString('es-CO')}`, totalValueX, yPosition, { align: 'right' })
     yPosition += 12
 
     // Información de pago
