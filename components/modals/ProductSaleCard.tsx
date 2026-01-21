@@ -63,21 +63,35 @@ export function ProductSaleCard({
   const [totalPriceInput, setTotalPriceInput] = useState<string>("")
   const [priceType, setPriceType] = useState<"unit" | "total">("unit")
   const [lastSalePrice, setLastSalePrice] = useState<number | null>(null)
+  const [priceManuallyModified, setPriceManuallyModified] = useState(false)
+  const [lastProductId, setLastProductId] = useState<string | null>(null)
 
-  // Obtener último precio de venta
+  // Obtener último precio de venta - solo la primera vez que se carga el producto
   useEffect(() => {
-    fetch(`/api/products/${product.id}/last-sale-price`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.lastPrice) {
-          setLastSalePrice(data.lastPrice)
-          if (!unitPrice || unitPrice === 0) {
-            setUnitPrice(data.lastPrice)
+    // Si cambió el producto, resetear el flag de modificación manual
+    if (lastProductId !== product.id) {
+      setPriceManuallyModified(false)
+      setLastProductId(product.id)
+      setUnitPrice(0)
+      setTotalPriceInput("")
+    }
+
+    // Solo obtener y establecer el último precio si no ha sido modificado manualmente
+    if (!priceManuallyModified) {
+      fetch(`/api/products/${product.id}/last-sale-price`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.lastPrice) {
+            setLastSalePrice(data.lastPrice)
+            // Solo establecer el precio si está en 0 (primera carga)
+            if (unitPrice === 0) {
+              setUnitPrice(data.lastPrice)
+            }
           }
-        }
-      })
-      .catch(() => {})
-  }, [product.id, unitPrice])
+        })
+        .catch(() => {})
+    }
+  }, [product.id])
 
   // Calcular precio unitario cuando cambia el total
   useEffect(() => {
@@ -90,7 +104,7 @@ export function ProductSaleCard({
 
   // Calcular total cuando cambia precio unitario
   useEffect(() => {
-    if (priceType === "unit" && unitPrice) {
+    if (priceType === "unit") {
       const calculatedTotal = (unitPrice || 0) * (quantity || 0)
       setTotalPriceInput(calculatedTotal.toString())
     }
@@ -236,13 +250,17 @@ export function ProductSaleCard({
           {priceType === "unit" ? (
             <CurrencyInput
               value={unitPrice || 0}
-              onChange={(val) => setUnitPrice(val)}
+              onChange={(val) => {
+                setPriceManuallyModified(true)
+                setUnitPrice(val)
+              }}
               placeholder={lastSalePrice ? lastSalePrice.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") : "1,000,000"}
             />
           ) : (
             <CurrencyInput
               value={parseFloat(totalPriceInput) || 0}
               onChange={(val) => {
+                setPriceManuallyModified(true)
                 setTotalPriceInput(val.toString())
               }}
               placeholder="1,000,000"
