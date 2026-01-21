@@ -730,7 +730,7 @@ export function SaleForm({ companyId, warehouses, customers: initialCustomers = 
                       }}
                       placeholder={`Máximo ${subtotal.toLocaleString("es-CO")}`}
                     />
-                    {watch("cashAmount") && watch("cashAmount") > subtotal && (
+                    {watch("cashAmount") !== undefined && watch("cashAmount")! > subtotal && (
                       <p className="text-xs text-red-500 mt-1">
                         El contado no puede exceder el total de ${subtotal.toLocaleString("es-CO")}
                       </p>
@@ -753,7 +753,7 @@ export function SaleForm({ companyId, warehouses, customers: initialCustomers = 
                       }}
                       placeholder={`Máximo ${subtotal.toLocaleString("es-CO")}`}
                     />
-                    {watch("creditAmount") && watch("creditAmount") > subtotal && (
+                    {watch("creditAmount") !== undefined && watch("creditAmount")! > subtotal && (
                       <p className="text-xs text-red-500 mt-1">
                         El crédito no puede exceder el total de ${subtotal.toLocaleString("es-CO")}
                       </p>
