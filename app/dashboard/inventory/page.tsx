@@ -69,6 +69,88 @@ export default function InventoryPage() {
     }
   }, [selectedCompanyId, selectedWarehouseId])
 
+  // Función para filtrar y ordenar productos (memoizada)
+  const applyFiltersAndSort = useCallback((productsList: any[], query: string, sort: string, warehouseId: string): any[] => {
+    // Primero filtrar por bodega seleccionada - solo productos que tienen stock en esta bodega
+    let filtered = productsList.filter((product: any) => {
+      const stock = product.stock?.find((s: any) => s.warehouseId === warehouseId)
+      // Mostrar productos que tienen stock en esta bodega (incluso si es 0)
+      return stock !== undefined
+    })
+
+    // Agregar currentStock a cada producto
+    filtered = filtered.map((product: any) => {
+      const stock = product.stock?.find((s: any) => s.warehouseId === warehouseId)
+      return {
+        ...product,
+        currentStock: stock?.quantity ?? 0
+      }
+    })
+
+    // Filtrar por búsqueda (solo si hay más de 2 caracteres)
+    if (query.length >= 2) {
+      const queryLower = query.toLowerCase()
+      filtered = filtered.filter((product) => {
+        const nameMatch = product.name?.toLowerCase().includes(queryLower)
+        // Buscar por nombre (que es lo que tenemos, no hay campo "referencia" separado)
+        return nameMatch
+      })
+    }
+
+    // Ordenar
+    let sorted = [...filtered]
+    switch (sort) {
+      case "name":
+        sorted.sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }))
+        break
+      case "name-desc":
+        sorted.sort((a, b) => b.name.localeCompare(a.name, "es", { sensitivity: "base" }))
+        break
+      case "stock-high":
+        sorted.sort((a, b) => {
+          const stockA = a.currentStock || 0
+          const stockB = b.currentStock || 0
+          if (stockB === stockA) {
+            return a.name.localeCompare(b.name, "es", { sensitivity: "base" })
+          }
+          return stockB - stockA
+        })
+        break
+      case "stock-low":
+        sorted.sort((a, b) => {
+          const stockA = a.currentStock || 0
+          const stockB = b.currentStock || 0
+          if (stockA === stockB) {
+            return a.name.localeCompare(b.name, "es", { sensitivity: "base" })
+          }
+          return stockA - stockB
+        })
+        break
+      case "last-purchase":
+        sorted.sort((a, b) => {
+          const dateA = a.lastPurchaseDate ? new Date(a.lastPurchaseDate).getTime() : 0
+          const dateB = b.lastPurchaseDate ? new Date(b.lastPurchaseDate).getTime() : 0
+          if (dateB === dateA) {
+            return a.name.localeCompare(b.name, "es", { sensitivity: "base" })
+          }
+          return dateB - dateA // Más reciente primero
+        })
+        break
+      case "last-sale":
+        sorted.sort((a, b) => {
+          const dateA = a.lastSaleDate ? new Date(a.lastSaleDate).getTime() : 0
+          const dateB = b.lastSaleDate ? new Date(b.lastSaleDate).getTime() : 0
+          if (dateB === dateA) {
+            return a.name.localeCompare(b.name, "es", { sensitivity: "base" })
+          }
+          return dateB - dateA // Más reciente primero
+        })
+        break
+    }
+
+    return sorted
+  }, [])
+
   // Memoizar los productos filtrados para evitar re-renders innecesarios
   const filteredProductsMemo = useMemo(() => {
     if (products.length === 0) return []
@@ -231,87 +313,6 @@ export default function InventoryPage() {
       console.error("Error cargando productos:", error)
     }
   }
-
-  const applyFiltersAndSort = useCallback((productsList: any[], query: string, sort: string, warehouseId: string): any[] => {
-    // Primero filtrar por bodega seleccionada - solo productos que tienen stock en esta bodega
-    let filtered = productsList.filter((product: any) => {
-      const stock = product.stock?.find((s: any) => s.warehouseId === warehouseId)
-      // Mostrar productos que tienen stock en esta bodega (incluso si es 0)
-      return stock !== undefined
-    })
-
-    // Agregar currentStock a cada producto
-    filtered = filtered.map((product: any) => {
-      const stock = product.stock?.find((s: any) => s.warehouseId === warehouseId)
-      return {
-        ...product,
-        currentStock: stock?.quantity ?? 0
-      }
-    })
-
-    // Filtrar por búsqueda (solo si hay más de 2 caracteres)
-    if (query.length >= 2) {
-      const queryLower = query.toLowerCase()
-      filtered = filtered.filter((product) => {
-        const nameMatch = product.name?.toLowerCase().includes(queryLower)
-        // Buscar por nombre (que es lo que tenemos, no hay campo "referencia" separado)
-        return nameMatch
-      })
-    }
-
-    // Ordenar
-    let sorted = [...filtered]
-    switch (sort) {
-      case "name":
-        sorted.sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }))
-        break
-      case "name-desc":
-        sorted.sort((a, b) => b.name.localeCompare(a.name, "es", { sensitivity: "base" }))
-        break
-      case "stock-high":
-        sorted.sort((a, b) => {
-          const stockA = a.currentStock || 0
-          const stockB = b.currentStock || 0
-          if (stockB === stockA) {
-            return a.name.localeCompare(b.name, "es", { sensitivity: "base" })
-          }
-          return stockB - stockA
-        })
-        break
-      case "stock-low":
-        sorted.sort((a, b) => {
-          const stockA = a.currentStock || 0
-          const stockB = b.currentStock || 0
-          if (stockA === stockB) {
-            return a.name.localeCompare(b.name, "es", { sensitivity: "base" })
-          }
-          return stockA - stockB
-        })
-        break
-      case "last-purchase":
-        sorted.sort((a, b) => {
-          const dateA = a.lastPurchaseDate ? new Date(a.lastPurchaseDate).getTime() : 0
-          const dateB = b.lastPurchaseDate ? new Date(b.lastPurchaseDate).getTime() : 0
-          if (dateB === dateA) {
-            return a.name.localeCompare(b.name, "es", { sensitivity: "base" })
-          }
-          return dateB - dateA // Más reciente primero
-        })
-        break
-      case "last-sale":
-        sorted.sort((a, b) => {
-          const dateA = a.lastSaleDate ? new Date(a.lastSaleDate).getTime() : 0
-          const dateB = b.lastSaleDate ? new Date(b.lastSaleDate).getTime() : 0
-          if (dateB === dateA) {
-            return a.name.localeCompare(b.name, "es", { sensitivity: "base" })
-          }
-          return dateB - dateA // Más reciente primero
-        })
-        break
-    }
-
-    return sorted
-  }, [])
 
   const fetchProductDetails = useCallback(async (productId: string, warehouseId: string) => {
     if (!isMountedRef.current) return
