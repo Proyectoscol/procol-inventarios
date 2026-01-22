@@ -4,6 +4,10 @@ import { sendCreditDueAlert } from "@/lib/email"
 import { getColombiaNow } from "@/lib/date-utils"
 import { getCompanyUserEmails } from "@/lib/company-users"
 
+// Desactivar caché para asegurar datos frescos en todos los dispositivos
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 // Este endpoint puede ser llamado por un cron job externo o por un servicio de scheduling
 // Para Easypanel, puedes configurar un cron job que llame a este endpoint periódicamente
 export async function GET(req: NextRequest) {

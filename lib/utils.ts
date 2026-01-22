@@ -6,8 +6,14 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatCurrency(amount: number): string {
-  // Formato con coma como separador de miles y punto como separador decimal
-  return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+  // FORZAR 'es-CO' para que una Mac en USA no ponga USD o formatos raros
+  // Esto asegura que todos los dispositivos vean el mismo formato
+  return new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount)
 }
 
 export function formatNumber(amount: number): string {

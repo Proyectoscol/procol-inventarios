@@ -78,18 +78,18 @@ export function ProductSaleCard({
 
     // Solo obtener y establecer el último precio si no ha sido modificado manualmente
     if (!priceManuallyModified) {
-      fetch(`/api/products/${product.id}/last-sale-price`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.lastPrice) {
-            setLastSalePrice(data.lastPrice)
+    fetch(`/api/products/${product.id}/last-sale-price`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.lastPrice) {
+          setLastSalePrice(data.lastPrice)
             // Solo establecer el precio si está en 0 (primera carga)
             if (unitPrice === 0) {
-              setUnitPrice(data.lastPrice)
-            }
+            setUnitPrice(data.lastPrice)
           }
-        })
-        .catch(() => {})
+        }
+      })
+      .catch(() => {})
     }
   }, [product.id])
 

@@ -81,27 +81,31 @@ export function getColombiaDayRange(dateString: string): { start: Date; end: Dat
 
 /**
  * Formatea una fecha a hora en formato colombiano
+ * FORZAR 'es-CO' y timeZone 'America/Bogota' para sincronizar en todos los dispositivos
  */
 export function formatColombiaTime(date: Date | string): string {
   const d = typeof date === "string" ? new Date(date) : date
-  return d.toLocaleTimeString("es-CO", { 
+  // FORZAR 'es-CO' explícitamente para evitar problemas de localización en Macs de USA
+  return new Intl.DateTimeFormat('es-CO', { 
     hour: "2-digit", 
     minute: "2-digit",
     timeZone: COLOMBIA_TIMEZONE
-  })
+  }).format(d)
 }
 
 /**
  * Formatea una fecha completa en formato colombiano
+ * FORZAR 'es-CO' y timeZone 'America/Bogota' para sincronizar en todos los dispositivos
  */
 export function formatColombiaDate(date: Date | string): string {
   const d = typeof date === "string" ? new Date(date) : date
-  return d.toLocaleDateString("es-CO", {
+  // FORZAR 'es-CO' explícitamente usando Intl.DateTimeFormat para evitar problemas de localización
+  return new Intl.DateTimeFormat('es-CO', {
     weekday: "long",
     year: "numeric",
     month: "long",
     day: "numeric",
     timeZone: COLOMBIA_TIMEZONE
-  })
+  }).format(d)
 }
 

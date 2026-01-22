@@ -4,6 +4,10 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import sharp from "sharp"
 
+// Desactivar caché para asegurar datos frescos en todos los dispositivos
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
