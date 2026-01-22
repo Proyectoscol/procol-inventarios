@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback, useMemo, useRef } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -36,6 +36,15 @@ export default function InventoryPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [inventoryValue, setInventoryValue] = useState<number | null>(null)
   const [loadingInventoryValue, setLoadingInventoryValue] = useState(false)
+  const isMountedRef = useRef(true)
+  const fetchingDetailsRef = useRef<Set<string>>(new Set())
+
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -60,11 +69,18 @@ export default function InventoryPage() {
     }
   }, [selectedCompanyId, selectedWarehouseId])
 
+  // Memoizar los productos filtrados para evitar re-renders innecesarios
+  const filteredProductsMemo = useMemo(() => {
+    if (products.length === 0) return []
+    return applyFiltersAndSort(products, search, sortBy, selectedWarehouseId)
+  }, [products, search, sortBy, selectedWarehouseId, applyFiltersAndSort])
+
+  // Actualizar estado solo cuando cambie el resultado memoizado
   useEffect(() => {
-    if (products.length > 0) {
-      applyFiltersAndSort(products, search, sortBy, selectedWarehouseId)
+    if (isMountedRef.current) {
+      setFilteredProducts(filteredProductsMemo)
     }
-  }, [search, sortBy, products, selectedWarehouseId])
+  }, [filteredProductsMemo])
 
   const fetchInventoryValue = async (warehouseId: string) => {
     setLoadingInventoryValue(true)
@@ -193,19 +209,30 @@ export default function InventoryPage() {
           })
         )
         
-        setProducts(enrichedProducts)
-        
-        // Cargar detalles de último pedido para cada producto
-        enrichedProducts.forEach((product: any) => {
-          fetchProductDetails(product.id, warehouseId)
-        })
+        if (isMountedRef.current) {
+          setProducts(enrichedProducts)
+          
+          // Cargar detalles de último pedido para cada producto (con debounce para evitar múltiples llamadas)
+          enrichedProducts.forEach((product: any) => {
+            if (!fetchingDetailsRef.current.has(product.id)) {
+              fetchingDetailsRef.current.add(product.id)
+              // Usar setTimeout para evitar múltiples actualizaciones simultáneas
+              setTimeout(() => {
+                if (isMountedRef.current) {
+                  fetchProductDetails(product.id, warehouseId)
+                }
+                fetchingDetailsRef.current.delete(product.id)
+              }, 0)
+            }
+          })
+        }
       }
     } catch (error) {
       console.error("Error cargando productos:", error)
     }
   }
 
-  const applyFiltersAndSort = (productsList: any[], query: string, sort: string, warehouseId: string) => {
+  const applyFiltersAndSort = useCallback((productsList: any[], query: string, sort: string, warehouseId: string): any[] => {
     // Primero filtrar por bodega seleccionada - solo productos que tienen stock en esta bodega
     let filtered = productsList.filter((product: any) => {
       const stock = product.stock?.find((s: any) => s.warehouseId === warehouseId)
@@ -283,23 +310,31 @@ export default function InventoryPage() {
         break
     }
 
-    setFilteredProducts(sorted)
-  }
+    return sorted
+  }, [])
 
-  const fetchProductDetails = async (productId: string, warehouseId: string) => {
+  const fetchProductDetails = useCallback(async (productId: string, warehouseId: string) => {
+    if (!isMountedRef.current) return
+    
     try {
       const res = await fetch(`/api/products/${productId}/last-purchase?warehouseId=${warehouseId}`)
-      if (res.ok) {
+      if (res.ok && isMountedRef.current) {
         const data = await res.json()
-        setProductDetails(prev => ({
-          ...prev,
-          [productId]: data
-        }))
+        setProductDetails(prev => {
+          // Solo actualizar si el componente sigue montado
+          if (!isMountedRef.current) return prev
+          return {
+            ...prev,
+            [productId]: data
+          }
+        })
       }
     } catch (error) {
-      console.error("Error cargando detalles del producto:", error)
+      if (isMountedRef.current) {
+        console.error("Error cargando detalles del producto:", error)
+      }
     }
-  }
+  }, [])
 
   const handleEditProduct = (product: any) => {
     setEditingProduct(product)
@@ -576,8 +611,14 @@ export default function InventoryPage() {
                     {product.imageBase64 && (
                       <img
                         src={product.imageBase64}
-                        alt={product.name}
+                        alt={product.name || "Producto"}
                         className="w-full h-48 object-cover rounded-md"
+                        loading="lazy"
+                        onError={(e) => {
+                          // Ocultar imagen si falla al cargar
+                          const target = e.target as HTMLImageElement
+                          target.style.display = 'none'
+                        }}
                       />
                     )}
                     
@@ -710,27 +751,24 @@ export default function InventoryPage() {
       )}
 
       {/* Modal de confirmación de eliminación */}
-      {productToDelete && (() => {
-        const hasMovements = productToDelete._count?.movements > 0 || productToDelete.movements?.length > 0
-        return (
-          <ConfirmDialog
-            open={deleteConfirmOpen}
-            onClose={() => {
-              setDeleteConfirmOpen(false)
-              setProductToDelete(null)
-            }}
-            onConfirm={confirmDeleteProduct}
-            title={`Eliminar Producto: ${productToDelete.name}`}
-            description={
-              hasMovements
-                ? `Este producto tiene ${productToDelete._count?.movements || productToDelete.movements?.length || 0} movimiento(s) histórico(s) (compras o ventas). Será movido a la papelera y podrás restaurarlo más tarde desde Configuración > Papelera. Los movimientos históricos se mantendrán intactos.`
-                : `Este producto no tiene movimientos históricos. Será eliminado completamente y no podrás restaurarlo. Esta acción no se puede deshacer.`
-            }
-            type={hasMovements ? "soft-delete" : "hard-delete"}
-            loading={isDeleting}
-          />
-        )
-      })()}
+      {productToDelete && (
+        <ConfirmDialog
+          open={deleteConfirmOpen}
+          onClose={() => {
+            setDeleteConfirmOpen(false)
+            setProductToDelete(null)
+          }}
+          onConfirm={confirmDeleteProduct}
+          title={`Eliminar Producto: ${productToDelete.name}`}
+          description={
+            (productToDelete._count?.movements > 0 || productToDelete.movements?.length > 0)
+              ? `Este producto tiene ${productToDelete._count?.movements || productToDelete.movements?.length || 0} movimiento(s) histórico(s) (compras o ventas). Será movido a la papelera y podrás restaurarlo más tarde desde Configuración > Papelera. Los movimientos históricos se mantendrán intactos.`
+              : `Este producto no tiene movimientos históricos. Será eliminado completamente y no podrás restaurarlo. Esta acción no se puede deshacer.`
+          }
+          type={(productToDelete._count?.movements > 0 || productToDelete.movements?.length > 0) ? "soft-delete" : "hard-delete"}
+          loading={isDeleting}
+        />
+      )}
       
       {/* Botón de atrás al final */}
       <div className="mt-8 flex justify-center">
