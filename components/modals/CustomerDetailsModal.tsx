@@ -10,25 +10,33 @@ import { es } from "date-fns/locale"
 import { toast } from "sonner"
 import { Customer, Movement } from "@/types"
 import { EditMovementModal } from "./EditMovementModal"
+import { CustomerForm } from "@/components/forms/CustomerForm"
 
 interface CustomerDetailsModalProps {
   customer: Customer
   companyId: string
   onClose: () => void
+  onCustomerUpdated?: (updatedCustomer: Customer) => void
 }
 
-export function CustomerDetailsModal({ customer, companyId, onClose }: CustomerDetailsModalProps) {
+export function CustomerDetailsModal({ customer, companyId, onClose, onCustomerUpdated }: CustomerDetailsModalProps) {
   const router = useRouter()
+  const [currentCustomer, setCurrentCustomer] = useState<Customer>(customer)
   const [movements, setMovements] = useState<Movement[]>([])
   const [summary, setSummary] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [editingMovement, setEditingMovement] = useState<Movement | null>(null)
+  const [editingCustomer, setEditingCustomer] = useState(false)
   const [warehouses, setWarehouses] = useState<Array<{ id: string; name: string }>>([])
+
+  useEffect(() => {
+    setCurrentCustomer(customer)
+  }, [customer])
 
   useEffect(() => {
     fetchCustomerMovements()
     fetchWarehouses()
-  }, [customer.id, companyId])
+  }, [currentCustomer.id, companyId])
 
   const fetchWarehouses = async () => {
     try {
@@ -70,6 +78,17 @@ export function CustomerDetailsModal({ customer, companyId, onClose }: CustomerD
     setEditingMovement(null)
   }
 
+  const handleCustomerUpdateSuccess = (updatedCustomer: Customer) => {
+    setCurrentCustomer(updatedCustomer)
+    setEditingCustomer(false)
+    fetchCustomerMovements()
+    onCustomerUpdated?.(updatedCustomer)
+    toast.success("✅ Cliente actualizado", {
+      description: "Los cambios se han guardado correctamente",
+      duration: 3000
+    })
+  }
+
   // Cerrar con ESC
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -106,27 +125,60 @@ export function CustomerDetailsModal({ customer, companyId, onClose }: CustomerD
       >
         <CardHeader className="sticky top-0 bg-white z-10 border-b pb-4">
           <div className="flex justify-between items-center">
-            <div>
-              <CardTitle className="text-2xl">{customer.name}</CardTitle>
-              <div className="mt-2 space-y-1 text-sm text-muted-foreground">
-                {customer.phone && (
-                  <p className="flex items-center gap-2">
-                    📞 {customer.phone}
-                  </p>
-                )}
-                {customer.address && (
-                  <p className="flex items-center gap-2">
-                    📍 {customer.address}
-                  </p>
-                )}
-              </div>
+            <div className="flex-1">
+              {!editingCustomer ? (
+                <>
+                  <CardTitle className="text-2xl">{currentCustomer.name}</CardTitle>
+                  <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+                    {currentCustomer.phone && (
+                      <p className="flex items-center gap-2">
+                        📞 {currentCustomer.phone}
+                      </p>
+                    )}
+                    {currentCustomer.address && (
+                      <p className="flex items-center gap-2">
+                        📍 {currentCustomer.address}
+                      </p>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <CardTitle className="text-2xl">Editar Cliente</CardTitle>
+              )}
             </div>
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="h-6 w-6 text-muted-foreground" />
-            </Button>
+            <div className="flex items-center gap-2">
+              {!editingCustomer && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEditingCustomer(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Edit className="h-4 w-4" />
+                  Editar
+                </Button>
+              )}
+              <Button variant="ghost" size="icon" onClick={onClose}>
+                <X className="h-6 w-6 text-muted-foreground" />
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-6 space-y-6">
+          {/* Formulario de edición */}
+          {editingCustomer ? (
+            <Card className="border-2 border-primary">
+              <CardContent className="p-6">
+                <CustomerForm
+                  companyId={companyId}
+                  customer={currentCustomer}
+                  onSuccess={handleCustomerUpdateSuccess}
+                  onCancel={() => setEditingCustomer(false)}
+                />
+              </CardContent>
+            </Card>
+          ) : (
+            <>
           {/* Resumen */}
           {summary && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -276,6 +328,8 @@ export function CustomerDetailsModal({ customer, companyId, onClose }: CustomerD
               </div>
             )}
           </div>
+            </>
+          )}
         </CardContent>
       </Card>
 

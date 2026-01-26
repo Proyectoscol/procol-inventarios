@@ -397,6 +397,18 @@ export default function CustomersPage() {
             customer={selectedCustomer}
             companyId={selectedCompanyId}
             onClose={() => setSelectedCustomer(null)}
+            onCustomerUpdated={(updatedCustomer) => {
+              // Actualizar el cliente en la lista
+              setCustomers(prevCustomers => 
+                prevCustomers.map(c => 
+                  c.id === updatedCustomer.id ? { ...c, ...updatedCustomer } : c
+                )
+              )
+              // Recargar clientes para obtener datos enriquecidos actualizados
+              fetchCustomers(selectedCompanyId)
+              // Actualizar el cliente seleccionado
+              setSelectedCustomer(updatedCustomer)
+            }}
           />
         )}
 
