@@ -78,7 +78,9 @@ export function CustomerDetailsModal({ customer, companyId, onClose, onCustomerU
     setEditingMovement(null)
   }
 
-  const handleCustomerUpdateSuccess = (updatedCustomer: Customer) => {
+  const handleCustomerUpdateSuccess = (updatedCustomer?: Customer) => {
+    if (!updatedCustomer) return
+    
     setCurrentCustomer(updatedCustomer)
     setEditingCustomer(false)
     fetchCustomerMovements()
