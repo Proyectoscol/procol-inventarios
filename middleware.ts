@@ -20,10 +20,16 @@ export async function middleware(request: NextRequest) {
       const allowedPaths = [
         "/dashboard",
         "/dashboard/customers",
+        "/dashboard/settings", // Permitir acceso a settings solo para cerrar sesión
       ]
 
       // Si intenta acceder a una ruta no permitida, redirigir a customers
       const isAllowed = allowedPaths.some(p => path === p || path.startsWith(p + "/"))
+      
+      // Si intenta acceder a subrutas de settings (excepto la página principal), bloquear
+      if (path.startsWith("/dashboard/settings/") && path !== "/dashboard/settings") {
+        return NextResponse.redirect(new URL("/dashboard/customers", request.url))
+      }
       
       if (!isAllowed) {
         return NextResponse.redirect(new URL("/dashboard/customers", request.url))

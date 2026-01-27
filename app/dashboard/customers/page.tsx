@@ -197,7 +197,7 @@ export default function CustomersPage() {
     <div className="p-8">
       <div className="max-w-4xl mx-auto">
         <div className="mb-4">
-          <BackButton href="/dashboard/settings" />
+          <BackButton href={isStoreManager ? "/dashboard" : "/dashboard/settings"} />
         </div>
         <div className="flex justify-between items-center mb-6">
           <div>
