@@ -395,23 +395,21 @@ export default function CustomersPage() {
                         )}
                       </div>
                       
-                      {/* Botón de generar guía de envío - Solo para STORE_MANAGER */}
-                      {isStoreManager && (
-                        <div className="mt-3 pt-3 border-t">
-                          <Button
-                            size="sm"
-                            className="w-full bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300"
-                            onClick={(e) => {
-                              e.stopPropagation() // Evitar que se abra el modal
-                              const url = `/api/customers/${customer.id}/shipping-label?companyId=${selectedCompanyId}`
-                              window.open(url, '_blank')
-                            }}
-                          >
-                            <Package className="h-4 w-4 mr-2" />
-                            Generar Guía de Envío
-                          </Button>
-                        </div>
-                      )}
+                      {/* Botón de generar guía de envío - Disponible para todos los usuarios */}
+                      <div className="mt-3 pt-3 border-t">
+                        <Button
+                          size="sm"
+                          className="w-full bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300"
+                          onClick={(e) => {
+                            e.stopPropagation() // Evitar que se abra el modal
+                            const url = `/api/customers/${customer.id}/shipping-label?companyId=${selectedCompanyId}`
+                            window.open(url, '_blank')
+                          }}
+                        >
+                          <Package className="h-4 w-4 mr-2" />
+                          Generar Guía de Envío
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
