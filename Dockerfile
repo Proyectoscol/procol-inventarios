@@ -71,8 +71,11 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Copiar script de inicio
+# Copiar scripts necesarios
+RUN mkdir -p ./scripts
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/start.sh ./scripts/start.sh
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/set-existing-users-master.js ./scripts/set-existing-users-master.js
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/set-existing-users-master.ts ./scripts/set-existing-users-master.ts
 RUN chmod +x ./scripts/start.sh
 
 # Script de inicio que ejecuta migraciones y luego inicia el servidor
