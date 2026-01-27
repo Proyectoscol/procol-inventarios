@@ -132,12 +132,37 @@ export function CustomerDetailsModal({ customer, companyId, onClose, onCustomerU
                 <>
                   <CardTitle className="text-2xl">{currentCustomer.name}</CardTitle>
                   <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+                    {currentCustomer.cedula && (
+                      <p className="flex items-center gap-2">
+                        🆔 Cédula: {currentCustomer.cedula}
+                      </p>
+                    )}
                     {currentCustomer.phone && (
                       <p className="flex items-center gap-2">
                         📞 {currentCustomer.phone}
                       </p>
                     )}
-                    {currentCustomer.address && (
+                    {(currentCustomer.departamento || currentCustomer.ciudad) && (
+                      <p className="flex items-center gap-2">
+                        📍 {[currentCustomer.departamento, currentCustomer.ciudad].filter(Boolean).join(", ")}
+                      </p>
+                    )}
+                    {currentCustomer.barrio && (
+                      <p className="flex items-center gap-2">
+                        🏘️ Barrio: {currentCustomer.barrio}
+                      </p>
+                    )}
+                    {currentCustomer.direccion1 && (
+                      <p className="flex items-center gap-2">
+                        🏠 {currentCustomer.direccion1}
+                      </p>
+                    )}
+                    {currentCustomer.direccion2 && (
+                      <p className="flex items-center gap-2">
+                        🏢 {currentCustomer.direccion2}
+                      </p>
+                    )}
+                    {currentCustomer.address && !currentCustomer.direccion1 && (
                       <p className="flex items-center gap-2">
                         📍 {currentCustomer.address}
                       </p>

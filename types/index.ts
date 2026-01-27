@@ -53,6 +53,12 @@ export interface Customer {
   name: string
   email?: string
   phone?: string
+  cedula?: string
+  departamento?: string
+  ciudad?: string
+  barrio?: string
+  direccion1?: string
+  direccion2?: string
   address?: string
   companyId: string
 }

@@ -75,7 +75,13 @@ export const saleSchema = z.object({
 export const customerSchema = z.object({
   name: z.string().min(1, "El nombre del cliente es requerido"),
   phone: z.string().optional(),
-  address: z.string().optional()
+  cedula: z.string().optional(),
+  departamento: z.string().min(1, "El departamento es requerido"),
+  ciudad: z.string().min(1, "La ciudad es requerida"),
+  barrio: z.string().optional(),
+  direccion1: z.string().optional(),
+  direccion2: z.string().optional(),
+  address: z.string().optional() // Legacy field
 })
 
 export const alertConfigSchema = z.object({

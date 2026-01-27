@@ -51,6 +51,12 @@ export async function POST(
       data: {
         name: data.name,
         phone: data.phone || null,
+        cedula: data.cedula || null,
+        departamento: data.departamento || null,
+        ciudad: data.ciudad || null,
+        barrio: data.barrio || null,
+        direccion1: data.direccion1 || null,
+        direccion2: data.direccion2 || null,
         address: data.address || null,
         companyId: params.id
       }

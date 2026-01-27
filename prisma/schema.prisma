@@ -163,7 +163,14 @@ model Customer {
   name      String
   email     String?
   phone     String?
-  address   String?
+  cedula    String?  // Cédula de identidad
+  // Dirección estructurada
+  departamento String?
+  ciudad       String?
+  barrio       String?
+  direccion1   String?  // Calle, carrera, etc.
+  direccion2   String?  // Edificio, casa, etc.
+  address   String?  // Dirección completa (legacy, mantener para compatibilidad)
   companyId String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
