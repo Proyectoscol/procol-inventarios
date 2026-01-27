@@ -9,7 +9,7 @@ import { BackButton } from "@/components/shared/BackButton"
 import { CustomerForm } from "@/components/forms/CustomerForm"
 import { CustomerDetailsModal } from "@/components/modals/CustomerDetailsModal"
 import { toast } from "sonner"
-import { User, DollarSign, Search, ArrowUpDown, Calendar, TrendingUp } from "lucide-react"
+import { User, DollarSign, Search, ArrowUpDown, Calendar, TrendingUp, Package } from "lucide-react"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -394,6 +394,25 @@ export default function CustomersPage() {
                           </div>
                         )}
                       </div>
+                      
+                      {/* Botón de generar guía de envío - Solo para STORE_MANAGER */}
+                      {isStoreManager && (
+                        <div className="mt-3 pt-3 border-t">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            onClick={(e) => {
+                              e.stopPropagation() // Evitar que se abra el modal
+                              const url = `/api/customers/${customer.id}/shipping-label?companyId=${selectedCompanyId}`
+                              window.open(url, '_blank')
+                            }}
+                          >
+                            <Package className="h-4 w-4 mr-2" />
+                            Generar Guía de Envío
+                          </Button>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 ))}
