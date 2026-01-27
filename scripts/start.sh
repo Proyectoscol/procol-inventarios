@@ -280,6 +280,24 @@ fi
 
 echo "✅ Base de datos lista"
 
+# Actualizar usuarios existentes a tipo MASTER
+echo "👥 Actualizando usuarios existentes a tipo MASTER..."
+# Intentar usar tsx primero (si está disponible), luego node con JS
+if [ -f "./node_modules/.bin/tsx" ]; then
+  DATABASE_URL="$DATABASE_URL" ./node_modules/.bin/tsx ./scripts/set-existing-users-master.ts || {
+    echo "   ⚠️  Error con tsx, intentando con node..."
+    DATABASE_URL="$DATABASE_URL" node ./scripts/set-existing-users-master.js || {
+      echo "   ⚠️  Error actualizando usuarios, pero continuando..."
+    }
+  }
+elif [ -f "./scripts/set-existing-users-master.js" ]; then
+  DATABASE_URL="$DATABASE_URL" node ./scripts/set-existing-users-master.js || {
+    echo "   ⚠️  Error actualizando usuarios, pero continuando..."
+  }
+else
+  echo "   ⚠️  Script de actualización no encontrado, continuando..."
+fi
+
 # Iniciar servidor
 echo "🌐 Iniciando servidor Next.js..."
 exec node server.js
