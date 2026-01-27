@@ -399,9 +399,8 @@ export default function CustomersPage() {
                       {isStoreManager && (
                         <div className="mt-3 pt-3 border-t">
                           <Button
-                            variant="outline"
                             size="sm"
-                            className="w-full"
+                            className="w-full bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300"
                             onClick={(e) => {
                               e.stopPropagation() // Evitar que se abra el modal
                               const url = `/api/customers/${customer.id}/shipping-label?companyId=${selectedCompanyId}`
