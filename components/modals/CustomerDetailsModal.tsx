@@ -132,6 +132,11 @@ export function CustomerDetailsModal({ customer, companyId, onClose, onCustomerU
                 <>
                   <CardTitle className="text-2xl">{currentCustomer.name}</CardTitle>
                   <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+                    {currentCustomer.nombreRecibe && currentCustomer.nombreRecibe !== currentCustomer.name && (
+                      <p className="flex items-center gap-2">
+                        👤 Recibe: {currentCustomer.nombreRecibe}
+                      </p>
+                    )}
                     {currentCustomer.cedula && (
                       <p className="flex items-center gap-2">
                         🆔 Cédula: {currentCustomer.cedula}

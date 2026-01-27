@@ -74,6 +74,7 @@ export const saleSchema = z.object({
 
 export const customerSchema = z.object({
   name: z.string().min(1, "El nombre del cliente es requerido"),
+  nombreRecibe: z.string().optional(),
   phone: z.string().optional(),
   cedula: z.string().optional(),
   departamento: z.string().min(1, "El departamento es requerido"),

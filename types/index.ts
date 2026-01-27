@@ -51,6 +51,7 @@ export interface Batch {
 export interface Customer {
   id: string
   name: string
+  nombreRecibe?: string
   email?: string
   phone?: string
   cedula?: string

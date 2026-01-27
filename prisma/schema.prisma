@@ -161,6 +161,7 @@ model Batch {
 model Customer {
   id        String   @id @default(cuid())
   name      String
+  nombreRecibe String?  // Nombre de quien recibe (por defecto igual a name)
   email     String?
   phone     String?
   cedula    String?  // Cédula de identidad

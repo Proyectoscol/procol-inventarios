@@ -14,6 +14,7 @@ import { departamentosColombia, getCiudadesByDepartamento } from "@/lib/colombia
 
 type CustomerFormData = {
   name: string
+  nombreRecibe?: string
   phone?: string
   cedula?: string
   departamento?: string
@@ -36,6 +37,8 @@ export function CustomerForm({ companyId, customer, onSuccess, onCancel }: Custo
   const [selectedCiudad, setSelectedCiudad] = useState<string>(customer?.ciudad || "")
   const [showDepartamentoDropdown, setShowDepartamentoDropdown] = useState(false)
   const [showCiudadDropdown, setShowCiudadDropdown] = useState(false)
+  const [departamentoSearch, setDepartamentoSearch] = useState("")
+  const [ciudadSearch, setCiudadSearch] = useState("")
   const departamentoRef = useRef<HTMLDivElement>(null)
   const ciudadRef = useRef<HTMLDivElement>(null)
 
@@ -49,6 +52,7 @@ export function CustomerForm({ companyId, customer, onSuccess, onCancel }: Custo
     resolver: zodResolver(customerSchema),
     defaultValues: {
       name: customer?.name || "",
+      nombreRecibe: customer?.nombreRecibe || customer?.name || "",
       phone: customer?.phone || "",
       cedula: customer?.cedula || "",
       departamento: customer?.departamento || "",
@@ -59,6 +63,20 @@ export function CustomerForm({ companyId, customer, onSuccess, onCancel }: Custo
       address: customer?.address || ""
     }
   })
+
+  const nameValue = watch("name")
+  const nombreRecibeValue = watch("nombreRecibe")
+  const [nombreRecibeModified, setNombreRecibeModified] = useState(false)
+
+  // Actualizar nombreRecibe cuando cambia el nombre (solo si no ha sido modificado manualmente)
+  useEffect(() => {
+    if (!nombreRecibeModified && nameValue) {
+      // Solo actualizar si nombreRecibe está vacío o es igual al nombre del cliente original
+      if (!nombreRecibeValue || nombreRecibeValue === customer?.name) {
+        setValue("nombreRecibe", nameValue)
+      }
+    }
+  }, [nameValue, setValue, customer?.name, nombreRecibeModified, nombreRecibeValue])
 
   const departamento = watch("departamento")
 
@@ -87,6 +105,20 @@ export function CustomerForm({ companyId, customer, onSuccess, onCancel }: Custo
   }, [])
 
   const ciudadesDisponibles = selectedDepartamento ? getCiudadesByDepartamento(selectedDepartamento) : []
+
+  // Filtrar departamentos basado en búsqueda
+  const departamentosFiltrados = departamentoSearch
+    ? departamentosColombia.filter(dept =>
+        dept.departamento.toUpperCase().startsWith(departamentoSearch.toUpperCase())
+      )
+    : departamentosColombia
+
+  // Filtrar ciudades basado en búsqueda
+  const ciudadesFiltradas = ciudadSearch
+    ? ciudadesDisponibles.filter(ciudad =>
+        ciudad.toUpperCase().startsWith(ciudadSearch.toUpperCase())
+      )
+    : ciudadesDisponibles
 
   // Verificar si la Contact Picker API está disponible
   const isContactPickerAvailable = () => {
@@ -144,12 +176,14 @@ export function CustomerForm({ companyId, customer, onSuccess, onCancel }: Custo
     setValue("departamento", dept)
     setSelectedCiudad("")
     setValue("ciudad", "")
+    setDepartamentoSearch("")
     setShowDepartamentoDropdown(false)
   }
 
   const handleSelectCiudad = (ciudad: string) => {
     setSelectedCiudad(ciudad)
     setValue("ciudad", ciudad)
+    setCiudadSearch("")
     setShowCiudadDropdown(false)
   }
 
@@ -219,6 +253,21 @@ export function CustomerForm({ companyId, customer, onSuccess, onCancel }: Custo
         )}
       </div>
 
+      {/* Nombre de quien recibe */}
+      <div>
+        <Label htmlFor="nombreRecibe">Nombre de quien recibe</Label>
+        <Input
+          id="nombreRecibe"
+          {...register("nombreRecibe", {
+            onChange: () => setNombreRecibeModified(true)
+          })}
+          placeholder="Ej: María García (por defecto: nombre del cliente)"
+        />
+        <p className="text-xs text-muted-foreground mt-1">
+          Por defecto es el mismo nombre del cliente, pero puedes cambiarlo
+        </p>
+      </div>
+
       {/* Cédula */}
       <div>
         <Label htmlFor="cedula">Cédula</Label>
@@ -244,33 +293,59 @@ export function CustomerForm({ companyId, customer, onSuccess, onCancel }: Custo
       <div className="relative" ref={departamentoRef}>
         <Label htmlFor="departamento">Departamento *</Label>
         <div className="relative">
-          <button
-            type="button"
-            onClick={() => {
-              setShowDepartamentoDropdown(!showDepartamentoDropdown)
-              setShowCiudadDropdown(false)
-            }}
-            className={`w-full flex items-center justify-between px-3 py-2 border rounded-md text-base focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${
-              errors.departamento ? "border-red-500" : "border-input bg-background"
-            }`}
-          >
-            <span className={selectedDepartamento ? "text-foreground" : "text-muted-foreground"}>
-              {selectedDepartamento || "Seleccionar departamento"}
-            </span>
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-          </button>
+          <div className="relative">
+            <Input
+              type="text"
+              value={selectedDepartamento || departamentoSearch}
+              onChange={(e) => {
+                const value = e.target.value
+                setDepartamentoSearch(value)
+                // Si hay texto, limpiar selección y mostrar dropdown
+                if (value) {
+                  setSelectedDepartamento("")
+                  setValue("departamento", "")
+                  setShowDepartamentoDropdown(true)
+                } else {
+                  setShowDepartamentoDropdown(false)
+                }
+              }}
+              onFocus={() => {
+                setShowDepartamentoDropdown(true)
+                if (selectedDepartamento) {
+                  setDepartamentoSearch(selectedDepartamento)
+                }
+              }}
+              onBlur={() => {
+                // Pequeño delay para permitir que el click en el dropdown funcione
+                setTimeout(() => {
+                  setShowDepartamentoDropdown(false)
+                }, 200)
+              }}
+              placeholder="Escribe para buscar (ej: RI para Risaralda)"
+              className={`pr-10 ${
+                errors.departamento ? "border-red-500" : ""
+              }`}
+            />
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          </div>
           {showDepartamentoDropdown && (
             <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
-              {departamentosColombia.map((dept) => (
-                <button
-                  key={dept.id}
-                  type="button"
-                  onClick={() => handleSelectDepartamento(dept.departamento)}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none text-base"
-                >
-                  {dept.departamento}
-                </button>
-              ))}
+              {departamentosFiltrados.length > 0 ? (
+                departamentosFiltrados.map((dept) => (
+                  <button
+                    key={dept.id}
+                    type="button"
+                    onClick={() => handleSelectDepartamento(dept.departamento)}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none text-base"
+                  >
+                    {dept.departamento}
+                  </button>
+                ))
+              ) : (
+                <div className="px-4 py-2 text-sm text-muted-foreground">
+                  No se encontraron departamentos
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -284,29 +359,53 @@ export function CustomerForm({ companyId, customer, onSuccess, onCancel }: Custo
       <div className="relative" ref={ciudadRef}>
         <Label htmlFor="ciudad">Ciudad/Municipio *</Label>
         <div className="relative">
-          <button
-            type="button"
-            onClick={() => {
-              if (selectedDepartamento) {
-                setShowCiudadDropdown(!showCiudadDropdown)
-                setShowDepartamentoDropdown(false)
-              } else {
-                toast.error("Primero selecciona un departamento")
-              }
-            }}
-            disabled={!selectedDepartamento}
-            className={`w-full flex items-center justify-between px-3 py-2 border rounded-md text-base focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
-              errors.ciudad ? "border-red-500" : "border-input bg-background"
-            }`}
-          >
-            <span className={selectedCiudad ? "text-foreground" : "text-muted-foreground"}>
-              {selectedCiudad || (selectedDepartamento ? "Seleccionar ciudad" : "Selecciona primero un departamento")}
-            </span>
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-          </button>
-          {showCiudadDropdown && ciudadesDisponibles.length > 0 && (
+          <div className="relative">
+            <Input
+              type="text"
+              value={selectedCiudad || ciudadSearch}
+              onChange={(e) => {
+                const value = e.target.value
+                if (!selectedDepartamento) {
+                  toast.error("Primero selecciona un departamento")
+                  return
+                }
+                setCiudadSearch(value)
+                // Si hay texto, limpiar selección y mostrar dropdown
+                if (value) {
+                  setSelectedCiudad("")
+                  setValue("ciudad", "")
+                  setShowCiudadDropdown(true)
+                } else {
+                  setShowCiudadDropdown(false)
+                }
+              }}
+              onFocus={() => {
+                if (!selectedDepartamento) {
+                  toast.error("Primero selecciona un departamento")
+                  return
+                }
+                setShowCiudadDropdown(true)
+                if (selectedCiudad) {
+                  setCiudadSearch(selectedCiudad)
+                }
+              }}
+              onBlur={() => {
+                // Pequeño delay para permitir que el click en el dropdown funcione
+                setTimeout(() => {
+                  setShowCiudadDropdown(false)
+                }, 200)
+              }}
+              disabled={!selectedDepartamento}
+              placeholder={selectedDepartamento ? "Escribe para buscar (ej: PE para Pereira)" : "Selecciona primero un departamento"}
+              className={`pr-10 ${
+                errors.ciudad ? "border-red-500" : ""
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+            />
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          </div>
+          {showCiudadDropdown && ciudadesFiltradas.length > 0 && selectedDepartamento && (
             <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
-              {ciudadesDisponibles.map((ciudad, index) => (
+              {ciudadesFiltradas.map((ciudad, index) => (
                 <button
                   key={index}
                   type="button"
@@ -316,6 +415,13 @@ export function CustomerForm({ companyId, customer, onSuccess, onCancel }: Custo
                   {ciudad}
                 </button>
               ))}
+            </div>
+          )}
+          {showCiudadDropdown && ciudadesFiltradas.length === 0 && selectedDepartamento && (
+            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg">
+              <div className="px-4 py-2 text-sm text-muted-foreground">
+                No se encontraron ciudades
+              </div>
             </div>
           )}
         </div>

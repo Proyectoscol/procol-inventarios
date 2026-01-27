@@ -58,6 +58,7 @@ export async function PUT(
       where: { id: customerId },
       data: {
         name: data.name.trim(),
+        nombreRecibe: data.nombreRecibe || null,
         phone: data.phone || null,
         cedula: data.cedula || null,
         departamento: data.departamento || null,
