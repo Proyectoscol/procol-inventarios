@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -10,13 +10,36 @@ import { Building2, Users, ArrowRight, AlertTriangle } from "lucide-react"
 import { toast } from "sonner"
 
 export default function OnboardingPage() {
-  const { data: session } = useSession()
+  const sessionData = useSession()
+  const { data: session, status } = sessionData || {}
   const router = useRouter()
   const [step, setStep] = useState<'choose' | 'master' | 'store_manager'>('choose')
   const [companyId, setCompanyId] = useState("")
   const [companyInfo, setCompanyInfo] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+
+  // Redirigir al login si no está autenticado
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login")
+    }
+  }, [status, router])
+
+  // Mostrar loading mientras se verifica la sesión
+  if (status === "loading" || !sessionData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <p className="text-muted-foreground">Cargando...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (status === "unauthenticated") {
+    return null
+  }
 
   const handleChooseMaster = async () => {
     setLoading(true)
