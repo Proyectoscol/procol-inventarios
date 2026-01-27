@@ -51,145 +51,197 @@ export async function GET(
       format: 'letter'
     })
 
-    const pageWidth = doc.internal.pageSize.width
-    const pageHeight = doc.internal.pageSize.height
-    const halfHeight = pageHeight / 2 // Primera mitad de la hoja
+    const pageWidth = doc.internal.pageSize.width // ~216mm para letter
+    const pageHeight = doc.internal.pageSize.height // ~279mm para letter
+    const halfHeight = pageHeight / 2 // Primera mitad de la hoja (~139.5mm)
+
+    // Márgenes para impresión (márgenes estándar de impresoras: ~10mm)
+    const marginLeft = 10
+    const marginRight = pageWidth - 10
+    const marginTop = 10
+    const usableHeight = halfHeight - marginTop - 10 // Altura usable en la primera mitad
 
     // Título
-    doc.setFontSize(18)
+    doc.setFontSize(16)
     doc.setFont('helvetica', 'bold')
-    doc.text('GUÍA DE ENVÍO', pageWidth / 2, 15, { align: 'center' })
+    doc.text('GUÍA DE ENVÍO', pageWidth / 2, marginTop + 6, { align: 'center' })
     
     // Línea divisoria horizontal en la mitad
     doc.setLineWidth(0.5)
-    doc.line(10, halfHeight, pageWidth - 10, halfHeight)
+    doc.line(marginLeft, halfHeight, marginRight, halfHeight)
 
-    let yPosition = 25
-    const leftColumnX = 15
+    let yPosition = marginTop + 14
+    const leftColumnX = marginLeft + 5
     const rightColumnX = pageWidth / 2 + 5
     const columnWidth = (pageWidth / 2) - 20
 
     // REMITENTE (Columna izquierda)
-    doc.setFontSize(12)
+    doc.setFontSize(11)
     doc.setFont('helvetica', 'bold')
     doc.text('REMITENTE', leftColumnX, yPosition)
-    doc.line(leftColumnX, yPosition + 2, leftColumnX + 40, yPosition + 2)
-    yPosition += 8
+    doc.line(leftColumnX, yPosition + 2, leftColumnX + 35, yPosition + 2)
+    yPosition += 7
 
-    doc.setFontSize(10)
+    doc.setFontSize(9)
     doc.setFont('helvetica', 'normal')
     
     // Nombre de la compañía
     if (company.name) {
       doc.setFont('helvetica', 'bold')
-      doc.text(company.name, leftColumnX, yPosition)
-      yPosition += 6
+      const companyNameLines = doc.splitTextToSize(company.name, columnWidth - 5)
+      doc.text(companyNameLines, leftColumnX, yPosition)
+      yPosition += companyNameLines.length * 5
     }
 
     // Nombre del encargado
     if (company.nombreEncargado) {
       doc.setFont('helvetica', 'normal')
       doc.text(`Encargado: ${company.nombreEncargado}`, leftColumnX, yPosition)
-      yPosition += 5
+      yPosition += 4.5
     }
 
     // Cédula/NIT
     if (company.cedula) {
       doc.text(`Cédula/NIT: ${company.cedula}`, leftColumnX, yPosition)
-      yPosition += 5
+      yPosition += 4.5
     }
 
     // Teléfono
     if (company.phone) {
       doc.text(`Teléfono: ${company.phone}`, leftColumnX, yPosition)
-      yPosition += 5
+      yPosition += 4.5
     }
 
     // Dirección estructurada
     if (company.departamento || company.ciudad) {
       const ubicacion = [company.departamento, company.ciudad].filter(Boolean).join(", ")
       doc.text(ubicacion, leftColumnX, yPosition)
-      yPosition += 5
+      yPosition += 4.5
     }
 
     if (company.barrio) {
       doc.text(`Barrio: ${company.barrio}`, leftColumnX, yPosition)
-      yPosition += 5
+      yPosition += 4.5
     }
 
     if (company.direccion1) {
-      doc.text(company.direccion1, leftColumnX, yPosition)
-      yPosition += 5
+      const dir1Lines = doc.splitTextToSize(company.direccion1, columnWidth - 5)
+      doc.text(dir1Lines, leftColumnX, yPosition)
+      yPosition += dir1Lines.length * 4.5
     }
 
     if (company.direccion2) {
-      doc.text(company.direccion2, leftColumnX, yPosition)
-      yPosition += 5
+      const dir2Lines = doc.splitTextToSize(company.direccion2, columnWidth - 5)
+      doc.text(dir2Lines, leftColumnX, yPosition)
+      yPosition += dir2Lines.length * 4.5
     }
+    
+    // Guardar posición Y final de columna remitente
+    const finalYRemitente = yPosition
 
     // DESTINATARIO (Columna derecha)
-    yPosition = 25
-    doc.setFontSize(12)
+    yPosition = marginTop + 14
+    doc.setFontSize(11)
     doc.setFont('helvetica', 'bold')
     doc.text('DESTINATARIO', rightColumnX, yPosition)
-    doc.line(rightColumnX, yPosition + 2, rightColumnX + 40, yPosition + 2)
-    yPosition += 8
+    doc.line(rightColumnX, yPosition + 2, rightColumnX + 35, yPosition + 2)
+    yPosition += 7
 
-    doc.setFontSize(10)
+    doc.setFontSize(9)
     doc.setFont('helvetica', 'normal')
     
     // Nombre del cliente o nombre de quien recibe
     const nombreDestinatario = initialMovement.customer.nombreRecibe || initialMovement.customer.name
     if (nombreDestinatario) {
       doc.setFont('helvetica', 'bold')
-      doc.text(nombreDestinatario, rightColumnX, yPosition)
-      yPosition += 6
+      const nombreLines = doc.splitTextToSize(nombreDestinatario, columnWidth - 5)
+      doc.text(nombreLines, rightColumnX, yPosition)
+      yPosition += nombreLines.length * 5
     }
 
     // Cédula
     if (initialMovement.customer.cedula) {
       doc.setFont('helvetica', 'normal')
       doc.text(`Cédula: ${initialMovement.customer.cedula}`, rightColumnX, yPosition)
-      yPosition += 5
+      yPosition += 4.5
     }
 
     // Teléfono
     if (initialMovement.customer.phone) {
       doc.text(`Teléfono: ${initialMovement.customer.phone}`, rightColumnX, yPosition)
-      yPosition += 5
+      yPosition += 4.5
     }
 
     // Dirección estructurada
     if (initialMovement.customer.departamento || initialMovement.customer.ciudad) {
       const ubicacion = [initialMovement.customer.departamento, initialMovement.customer.ciudad].filter(Boolean).join(", ")
       doc.text(ubicacion, rightColumnX, yPosition)
-      yPosition += 5
+      yPosition += 4.5
     }
 
     if (initialMovement.customer.barrio) {
       doc.text(`Barrio: ${initialMovement.customer.barrio}`, rightColumnX, yPosition)
-      yPosition += 5
+      yPosition += 4.5
     }
 
     if (initialMovement.customer.direccion1) {
-      doc.text(initialMovement.customer.direccion1, rightColumnX, yPosition)
-      yPosition += 5
+      const dir1Lines = doc.splitTextToSize(initialMovement.customer.direccion1, columnWidth - 5)
+      doc.text(dir1Lines, rightColumnX, yPosition)
+      yPosition += dir1Lines.length * 4.5
     }
 
     if (initialMovement.customer.direccion2) {
-      doc.text(initialMovement.customer.direccion2, rightColumnX, yPosition)
-      yPosition += 5
+      const dir2Lines = doc.splitTextToSize(initialMovement.customer.direccion2, columnWidth - 5)
+      doc.text(dir2Lines, rightColumnX, yPosition)
+      yPosition += dir2Lines.length * 4.5
     }
 
     // Si no hay dirección estructurada, usar address legacy
     if (!initialMovement.customer.direccion1 && initialMovement.customer.address) {
-      doc.text(`Dirección: ${initialMovement.customer.address}`, rightColumnX, yPosition)
-      yPosition += 5
+      const addressLines = doc.splitTextToSize(initialMovement.customer.address, columnWidth - 5)
+      doc.text(addressLines, rightColumnX, yPosition)
+      yPosition += addressLines.length * 4.5
     }
 
-    // Información adicional en la parte inferior de la primera mitad
-    yPosition = halfHeight - 20
-    doc.setFontSize(8)
+    // Guardar posición Y final de columna destinatario
+    const finalYDestinatario = yPosition
+    
+    // Posicionar casillas y campo "Contiene" debajo de la columna más larga
+    let startYInfo = Math.max(finalYRemitente, finalYDestinatario) + 8
+    
+    // Verificar que todo quepa en la primera mitad (con margen de seguridad)
+    const espacioNecesario = 25 // Espacio para casillas + contiene + número de orden
+    if (startYInfo + espacioNecesario > halfHeight - 10) {
+      // Si no cabe, ajustar posición hacia arriba
+      startYInfo = halfHeight - espacioNecesario
+    }
+    
+    yPosition = startYInfo
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'normal')
+    doc.text('Pago de envío:', leftColumnX, yPosition)
+    yPosition += 6
+    
+    // Casilla "Al cobro" (destinatario paga)
+    const casillaSize = 4
+    doc.rect(leftColumnX, yPosition - 3, casillaSize, casillaSize) // Cuadrado vacío
+    doc.text('Al cobro (envío pago)', leftColumnX + 7, yPosition)
+    
+    // Casilla "Paga remitente"
+    const casilla2X = leftColumnX + 55
+    doc.rect(casilla2X, yPosition - 3, casillaSize, casillaSize) // Cuadrado vacío
+    doc.text('Paga remitente', casilla2X + 7, yPosition)
+    
+    // Campo "Contiene"
+    yPosition += 7
+    doc.setFont('helvetica', 'bold')
+    doc.text('Contiene:', leftColumnX, yPosition)
+    doc.setFont('helvetica', 'normal')
+    doc.text('Artículos deportivos', leftColumnX + 22, yPosition)
+
+    // Información adicional en la parte inferior (antes de la línea divisoria)
+    yPosition = halfHeight - 8
+    doc.setFontSize(7)
     doc.setFont('helvetica', 'normal')
     doc.text(`Número de Orden: ${initialMovement.movementNumber}`, leftColumnX, yPosition)
     
