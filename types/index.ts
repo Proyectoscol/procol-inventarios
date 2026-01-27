@@ -7,6 +7,14 @@ export interface User {
 export interface Company {
   id: string
   name: string
+  nombreEncargado?: string
+  phone?: string
+  cedula?: string
+  departamento?: string
+  ciudad?: string
+  barrio?: string
+  direccion1?: string
+  direccion2?: string
   createdAt: Date
   updatedAt: Date
 }

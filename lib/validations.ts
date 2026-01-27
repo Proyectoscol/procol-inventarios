@@ -13,6 +13,14 @@ export const loginSchema = z.object({
 
 export const companySchema = z.object({
   name: z.string().min(1, "El nombre de la compañía es requerido"),
+  nombreEncargado: z.string().optional(),
+  phone: z.string().optional(),
+  cedula: z.string().optional(),
+  departamento: z.string().optional(),
+  ciudad: z.string().optional(),
+  barrio: z.string().optional(),
+  direccion1: z.string().optional(),
+  direccion2: z.string().optional(),
   alertEmails: z.array(z.string().email()).optional(),
   enableAlerts: z.boolean().optional()
 })

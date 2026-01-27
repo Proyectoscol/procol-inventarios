@@ -27,6 +27,16 @@ model User {
 model Company {
   id        String   @id @default(cuid())
   name      String
+  // Información de contacto y dirección de despacho
+  nombreEncargado String?  // Nombre de la persona encargada
+  phone     String?
+  cedula    String?  // Cédula/NIT de la compañía
+  // Dirección estructurada
+  departamento String?
+  ciudad       String?
+  barrio       String?
+  direccion1   String?  // Calle, carrera, etc.
+  direccion2   String?  // Edificio, casa, etc.
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

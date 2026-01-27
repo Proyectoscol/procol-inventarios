@@ -60,7 +60,15 @@ export async function POST(req: NextRequest) {
     const result = await prisma.$transaction(async (tx) => {
       const company = await tx.company.create({
         data: {
-          name: data.name.trim()
+          name: data.name.trim(),
+          nombreEncargado: data.nombreEncargado || null,
+          phone: data.phone || null,
+          cedula: data.cedula || null,
+          departamento: data.departamento || null,
+          ciudad: data.ciudad || null,
+          barrio: data.barrio || null,
+          direccion1: data.direccion1 || null,
+          direccion2: data.direccion2 || null
         }
       })
 
