@@ -37,7 +37,9 @@ export function DashboardHeader() {
   // Filtrar navegación según tipo de usuario
   const navigation = (session?.user as any)?.userType === "STORE_MANAGER"
     ? allNavigation.filter(item => 
-        item.href === "/dashboard" || item.href === "/dashboard/customers"
+        item.href === "/dashboard" || 
+        item.href === "/dashboard/customers" ||
+        item.href === "/dashboard/settings"
       )
     : allNavigation
 
@@ -100,7 +102,7 @@ export function DashboardHeader() {
               />
             </div>
 
-            {/* Mobile: Company selector, settings button and menu button - Right aligned */}
+            {/* Mobile: Company selector and menu button - Right aligned */}
             <div className="md:hidden flex items-center space-x-2 flex-shrink-0 ml-auto">
               <CompanySelector
                 companies={companies}
@@ -109,17 +111,6 @@ export function DashboardHeader() {
                 loading={loading}
                 isMobile={true}
               />
-              <Link href="/dashboard/settings">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={`relative z-50 flex-shrink-0 h-8 w-8 p-0 ${
-                    isActive("/dashboard/settings") ? "bg-primary text-white" : ""
-                  }`}
-                >
-                  <Settings className="h-4 w-4" />
-                </Button>
-              </Link>
               <Button
                 variant="ghost"
                 size="sm"
