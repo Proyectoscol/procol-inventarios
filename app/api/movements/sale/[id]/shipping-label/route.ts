@@ -225,7 +225,7 @@ export async function GET(
     // Casilla "Al cobro" (destinatario paga)
     const casillaSize = 4
     doc.rect(leftColumnX, yPosition - 3, casillaSize, casillaSize) // Cuadrado vacío
-    doc.text('Al cobro (envío pago)', leftColumnX + 7, yPosition)
+    doc.text('Al cobro', leftColumnX + 7, yPosition)
     
     // Casilla "Paga remitente"
     const casilla2X = leftColumnX + 55
