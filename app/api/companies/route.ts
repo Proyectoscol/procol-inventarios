@@ -28,6 +28,18 @@ export async function GET(req: NextRequest) {
             products: true,
             warehouses: true
           }
+        },
+        users: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                userType: true
+              }
+            }
+          }
         }
       }
     })

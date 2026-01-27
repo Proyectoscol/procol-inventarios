@@ -113,7 +113,15 @@ export default function OnboardingPage() {
       }
 
       toast.success("Te has unido a la compañía exitosamente")
-      // Forzar refresh de sesión para actualizar userType
+      
+      // Forzar actualización de sesión
+      const { update } = await import("next-auth/react")
+      await update() // Dispara trigger "update" en el callback de JWT
+      
+      // Esperar un momento y luego redirigir
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      // Redirigir al dashboard
       window.location.href = "/dashboard/customers"
     } catch (err: any) {
       toast.error(err.message || "Error al unirse a la compañía")

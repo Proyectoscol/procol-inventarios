@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { BackButton } from "@/components/shared/BackButton"
 import { CompanyForm } from "@/components/forms/CompanyForm"
 import { toast } from "sonner"
-import { Edit2, X, Copy, Check } from "lucide-react"
+import { Edit2, X, Copy, Check, Users } from "lucide-react"
 
 export default function CompaniesSettingsPage() {
   const { data: session, status } = useSession()
@@ -18,6 +18,7 @@ export default function CompaniesSettingsPage() {
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [editingCompanyId, setEditingCompanyId] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const isMaster = (session?.user as any)?.userType === "MASTER"
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -209,7 +210,7 @@ export default function CompaniesSettingsPage() {
                                 <p>🏢 {company.direccion2}</p>
                               )}
                             </div>
-                            <div className="flex gap-4 text-sm text-muted-foreground">
+                            <div className="flex gap-4 text-sm text-muted-foreground mb-3">
                               <span>
                                 📦 {company._count?.products || 0} productos
                               </span>
@@ -217,6 +218,40 @@ export default function CompaniesSettingsPage() {
                                 🏢 {company._count?.warehouses || 0} bodegas
                               </span>
                             </div>
+                            
+                            {/* Usuarios con acceso - Solo para MASTER */}
+                            {isMaster && company.users && company.users.length > 0 && (
+                              <div className="mt-4 pt-4 border-t">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Users className="h-4 w-4 text-muted-foreground" />
+                                  <h4 className="text-sm font-semibold">Usuarios con Acceso ({company.users.length})</h4>
+                                </div>
+                                <div className="space-y-2">
+                                  {company.users.map((userCompany: any) => (
+                                    <div key={userCompany.id} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
+                                      <div className="flex-1">
+                                        <p className="font-medium">{userCompany.user.name}</p>
+                                        <p className="text-xs text-muted-foreground">{userCompany.user.email}</p>
+                                        <div className="flex items-center gap-2 mt-1">
+                                          <span className={`text-xs px-2 py-0.5 rounded ${
+                                            userCompany.user.userType === "MASTER" 
+                                              ? "bg-blue-100 text-blue-700" 
+                                              : "bg-green-100 text-green-700"
+                                          }`}>
+                                            {userCompany.user.userType === "MASTER" ? "Usuario Maestro" : "Gestor de Tienda"}
+                                          </span>
+                                          {userCompany.isOwner && (
+                                            <span className="text-xs px-2 py-0.5 rounded bg-purple-100 text-purple-700">
+                                              Dueño
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </CardContent>

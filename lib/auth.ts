@@ -50,11 +50,29 @@ export const authOptions: NextAuthOptions = {
     signIn: "/login",
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id
         token.userType = (user as any).userType
       }
+      
+      // Si es un refresh de sesión o no tiene userType, obtener el más reciente de la BD
+      if (trigger === "update" || !token.userType) {
+        if (token.id) {
+          try {
+            const dbUser = await prisma.user.findUnique({
+              where: { id: token.id as string },
+              select: { userType: true }
+            })
+            if (dbUser) {
+              token.userType = dbUser.userType
+            }
+          } catch (error) {
+            console.error("Error obteniendo userType:", error)
+          }
+        }
+      }
+      
       return token
     },
     async session({ session, token }) {
