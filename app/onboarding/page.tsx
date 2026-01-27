@@ -11,7 +11,7 @@ import { toast } from "sonner"
 
 export default function OnboardingPage() {
   const sessionData = useSession()
-  const { data: session, status } = sessionData || {}
+  const { data: session, status, update } = sessionData || {}
   const router = useRouter()
   const [step, setStep] = useState<'choose' | 'master' | 'store_manager'>('choose')
   const [companyId, setCompanyId] = useState("")
@@ -115,8 +115,9 @@ export default function OnboardingPage() {
       toast.success("Te has unido a la compañía exitosamente")
       
       // Forzar actualización de sesión
-      const { update } = await import("next-auth/react")
-      await update() // Dispara trigger "update" en el callback de JWT
+      if (update) {
+        await update() // Dispara trigger "update" en el callback de JWT
+      }
       
       // Esperar un momento y luego redirigir
       await new Promise(resolve => setTimeout(resolve, 1000))
