@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { BackButton } from "@/components/shared/BackButton"
 import { CompanyForm } from "@/components/forms/CompanyForm"
 import { toast } from "sonner"
-import { Edit2, X } from "lucide-react"
+import { Edit2, X, Copy, Check } from "lucide-react"
 
 export default function CompaniesSettingsPage() {
   const { data: session, status } = useSession()
@@ -17,6 +17,7 @@ export default function CompaniesSettingsPage() {
   const [loading, setLoading] = useState(true)
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [editingCompanyId, setEditingCompanyId] = useState<string | null>(null)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -51,6 +52,20 @@ export default function CompaniesSettingsPage() {
     toast.success("✅ Compañía guardada exitosamente", {
       duration: 2000
     })
+  }
+
+  const copyCompanyId = (id: string) => {
+    navigator.clipboard.writeText(id)
+    setCopiedId(id)
+    toast.success("ID copiado al portapapeles", {
+      duration: 2000
+    })
+    setTimeout(() => setCopiedId(null), 2000)
+  }
+
+  const maskCompanyId = (id: string) => {
+    if (id.length <= 10) return id
+    return `${id.slice(0, 4)}${'•'.repeat(Math.max(4, id.length - 8))}${id.slice(-4)}`
   }
 
   if (status === "loading" || loading) {
@@ -150,6 +165,25 @@ export default function CompaniesSettingsPage() {
                               >
                                 <Edit2 className="h-4 w-4" />
                                 Editar
+                              </Button>
+                            </div>
+                            <div className="flex items-center gap-2 mb-2 text-sm">
+                              <span className="text-muted-foreground">ID de Compañía:</span>
+                              <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
+                                {maskCompanyId(company.id)}
+                              </span>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => copyCompanyId(company.id)}
+                                className="h-6 px-2"
+                                title="Copiar ID completo"
+                              >
+                                {copiedId === company.id ? (
+                                  <Check className="h-3 w-3 text-green-500" />
+                                ) : (
+                                  <Copy className="h-3 w-3" />
+                                )}
                               </Button>
                             </div>
                             <div className="space-y-1 text-sm text-muted-foreground mb-2">

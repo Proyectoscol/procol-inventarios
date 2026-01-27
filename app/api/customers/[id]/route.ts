@@ -45,6 +45,9 @@ export async function PUT(
       )
     }
 
+    // Los gestores de tienda pueden editar clientes
+    // (no hay restricción adicional para edición)
+
     // Validar que el nombre no esté vacío
     if (!data.name || typeof data.name !== "string" || data.name.trim().length === 0) {
       return NextResponse.json(
@@ -75,6 +78,71 @@ export async function PUT(
     console.error("Error actualizando cliente:", error)
     return NextResponse.json(
       { error: error.message || "Error al actualizar el cliente" },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session || !session.user?.id) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+    }
+
+    // Verificar que el usuario no sea STORE_MANAGER
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { userType: true }
+    })
+
+    if (user?.userType === "STORE_MANAGER") {
+      return NextResponse.json(
+        { error: "Los gestores de tienda no pueden eliminar clientes" },
+        { status: 403 }
+      )
+    }
+
+    const customerId = params.id
+
+    // Verificar que el cliente existe
+    const existingCustomer = await prisma.customer.findUnique({
+      where: { id: customerId },
+      include: { company: true }
+    })
+
+    if (!existingCustomer) {
+      return NextResponse.json({ error: "Cliente no encontrado" }, { status: 404 })
+    }
+
+    // Verificar que el usuario tenga acceso a la compañía del cliente
+    const userCompany = await prisma.userCompany.findFirst({
+      where: {
+        userId: session.user.id,
+        companyId: existingCustomer.companyId
+      }
+    })
+
+    if (!userCompany) {
+      return NextResponse.json(
+        { error: "No tienes acceso a esta compañía" },
+        { status: 403 }
+      )
+    }
+
+    // Eliminar el cliente
+    await prisma.customer.delete({
+      where: { id: customerId }
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error: any) {
+    console.error("Error eliminando cliente:", error)
+    return NextResponse.json(
+      { error: error.message || "Error al eliminar el cliente" },
       { status: 500 }
     )
   }

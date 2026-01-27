@@ -10,13 +10,19 @@ datasource db {
 }
 
 // ============= AUTENTICACIÓN =============
+enum UserType {
+  MASTER        // Acceso completo a todo
+  STORE_MANAGER // Solo gestión de clientes
+}
+
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id           String    @id @default(cuid())
+  email        String    @unique
   name         String
   passwordHash String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  userType     UserType? // null = no ha elegido aún (onboarding pendiente)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   companies UserCompany[]
 
@@ -55,6 +61,7 @@ model UserCompany {
   userId    String
   companyId String
   role      String   @default("admin") // admin, manager, employee
+  isOwner   Boolean  @default(false)   // true = creó la compañía, false = fue invitado
   createdAt DateTime @default(now())
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)

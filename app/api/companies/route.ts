@@ -76,7 +76,8 @@ export async function POST(req: NextRequest) {
         data: {
           userId: session.user.id,
           companyId: company.id,
-          role: "admin"
+          role: "admin",
+          isOwner: true // El usuario que crea la compañía es el dueño
         }
       })
 

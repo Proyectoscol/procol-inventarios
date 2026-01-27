@@ -26,13 +26,20 @@ export function DashboardHeader() {
   
   const selectedCompany = companies.find(c => c.id === selectedCompanyId)
 
-  const navigation = [
+  const allNavigation = [
     { name: "Dashboard", href: "/dashboard", icon: Home },
     { name: "Inventario", href: "/dashboard/inventory", icon: Package },
     { name: "Clientes", href: "/dashboard/customers", icon: User },
     { name: "Movimientos", href: "/dashboard/movements", icon: Receipt },
     { name: "Configuración", href: "/dashboard/settings", icon: Settings },
   ]
+
+  // Filtrar navegación según tipo de usuario
+  const navigation = (session?.user as any)?.userType === "STORE_MANAGER"
+    ? allNavigation.filter(item => 
+        item.href === "/dashboard" || item.href === "/dashboard/customers"
+      )
+    : allNavigation
 
   const isActive = (href: string) => {
     if (href === "/dashboard") {
