@@ -87,10 +87,18 @@ export default function DashboardPage() {
     <div className="p-8">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold mb-2">
-          Bienvenido, {session.user?.name}
+          {isStoreManager ? (
+            <>Bienvenido, {session.user?.name}</>
+          ) : (
+            <>Bienvenido, {session.user?.name}</>
+          )}
         </h1>
         <p className="text-muted-foreground mb-8">
-          Gestiona tu inventario de manera eficiente
+          {isStoreManager ? (
+            <>Gestiona los clientes de tu tienda de manera eficiente</>
+          ) : (
+            <>Gestiona tu inventario de manera eficiente</>
+          )}
         </p>
 
         {/* Flujo de configuración inicial */}
