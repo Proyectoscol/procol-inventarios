@@ -185,6 +185,10 @@ export default function MovementsPage() {
     window.open(`/api/movements/sale/${movementId}/invoice`, "_blank")
   }
 
+  const handleViewShippingLabel = (movementId: string) => {
+    window.open(`/api/movements/sale/${movementId}/shipping-label`, "_blank")
+  }
+
   if (status === "loading" || loading) {
     return (
       <div className="p-8">
@@ -459,15 +463,26 @@ export default function MovementsPage() {
                               Editar
                             </Button>
                             {isSale && (
-                              <Button
-                                onClick={() => handleViewPDF(movement.id)}
-                                variant="outline"
-                                size="sm"
-                                className="w-full"
-                              >
-                                <FileText className="h-4 w-4 mr-2" />
-                                Ver PDF
-                              </Button>
+                              <>
+                                <Button
+                                  onClick={() => handleViewPDF(movement.id)}
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full"
+                                >
+                                  <FileText className="h-4 w-4 mr-2" />
+                                  Ver PDF
+                                </Button>
+                                <Button
+                                  onClick={() => handleViewShippingLabel(movement.id)}
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-700"
+                                >
+                                  <Package className="h-4 w-4 mr-2" />
+                                  Ver Guía de Envío
+                                </Button>
+                              </>
                             )}
                           </div>
                         </div>

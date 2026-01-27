@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { CheckCircle2, Home, FileText, Download } from "lucide-react"
+import { CheckCircle2, Home, FileText, Download, Package } from "lucide-react"
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner"
 
 export default function SaleSuccessPage() {
@@ -39,6 +39,12 @@ export default function SaleSuccessPage() {
   const handleViewPDF = () => {
     if (movementId) {
       window.open(`/api/movements/sale/${movementId}/invoice`, "_blank")
+    }
+  }
+
+  const handleViewShippingLabel = () => {
+    if (movementId) {
+      window.open(`/api/movements/sale/${movementId}/shipping-label`, "_blank")
     }
   }
 
@@ -123,6 +129,14 @@ export default function SaleSuccessPage() {
           >
             <FileText className="h-6 w-6 mr-3" />
             Ver Orden de Pedido PDF
+          </Button>
+          <Button
+            onClick={handleViewShippingLabel}
+            className="flex-1 h-16 text-lg font-semibold bg-blue-600 hover:bg-blue-700 shadow-md hover:shadow-lg transition-all"
+            size="lg"
+          >
+            <Package className="h-6 w-6 mr-3" />
+            Ver Guía de Envío
           </Button>
         </div>
 
