@@ -64,19 +64,19 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.bin ./node_modules/
 # Copiar package.json para que prisma pueda funcionar
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 
+# Crear directorio scripts y copiar scripts necesarios (antes de cambiar de usuario)
+RUN mkdir -p ./scripts
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/start.sh ./scripts/start.sh
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/set-existing-users-master.js ./scripts/set-existing-users-master.js
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/set-existing-users-master.ts ./scripts/set-existing-users-master.ts
+RUN chmod +x ./scripts/start.sh
+
 USER nextjs
 
 EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
-
-# Copiar scripts necesarios
-RUN mkdir -p ./scripts
-COPY --from=builder --chown=nextjs:nodejs /app/scripts/start.sh ./scripts/start.sh
-COPY --from=builder --chown=nextjs:nodejs /app/scripts/set-existing-users-master.js ./scripts/set-existing-users-master.js
-COPY --from=builder --chown=nextjs:nodejs /app/scripts/set-existing-users-master.ts ./scripts/set-existing-users-master.ts
-RUN chmod +x ./scripts/start.sh
 
 # Script de inicio que ejecuta migraciones y luego inicia el servidor
 CMD ["./scripts/start.sh"]
