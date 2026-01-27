@@ -81,6 +81,7 @@ export default function DashboardPage() {
   const hasCompanies = companies.length > 0
   const hasWarehouses = warehouses.length > 0
   const canUseSystem = hasCompanies && hasWarehouses
+  const isStoreManager = (session?.user as any)?.userType === "STORE_MANAGER"
 
   return (
     <div className="p-8">
@@ -172,52 +173,62 @@ export default function DashboardPage() {
         {/* Secciones rápidas - Solo se muestran si hay compañías y bodegas */}
         {canUseSystem && (
           <>
-            {/* Acciones Rápidas */}
-            <div className="mb-8">
-              <h2 className="text-2xl font-semibold mb-4">Acciones Rápidas</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Link href="/dashboard/movements/sale">
-                  <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
-                    <CardHeader>
-                      <div className="flex items-center space-x-3">
-                        <div className="p-3 bg-green-100 rounded-lg">
-                          <ShoppingCart className="h-6 w-6 text-green-600" />
+            {/* Acciones Rápidas - Solo para MASTER */}
+            {!isStoreManager && (
+              <div className="mb-8">
+                <h2 className="text-2xl font-semibold mb-4">Acciones Rápidas</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Link href="/dashboard/movements/sale">
+                    <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+                      <CardHeader>
+                        <div className="flex items-center space-x-3">
+                          <div className="p-3 bg-green-100 rounded-lg">
+                            <ShoppingCart className="h-6 w-6 text-green-600" />
+                          </div>
+                          <div>
+                            <CardTitle>Nueva Venta</CardTitle>
+                            <CardDescription>
+                              Registra una nueva venta
+                            </CardDescription>
+                          </div>
                         </div>
-                        <div>
-                          <CardTitle>Nueva Venta</CardTitle>
-                          <CardDescription>
-                            Registra una nueva venta
-                          </CardDescription>
-                        </div>
-                      </div>
-                    </CardHeader>
-                  </Card>
-                </Link>
+                      </CardHeader>
+                    </Card>
+                  </Link>
 
-                <Link href="/dashboard/movements/purchase">
-                  <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
-                    <CardHeader>
-                      <div className="flex items-center space-x-3">
-                        <div className="p-3 bg-blue-100 rounded-lg">
-                          <Package className="h-6 w-6 text-blue-600" />
+                  <Link href="/dashboard/movements/purchase">
+                    <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+                      <CardHeader>
+                        <div className="flex items-center space-x-3">
+                          <div className="p-3 bg-blue-100 rounded-lg">
+                            <Package className="h-6 w-6 text-blue-600" />
+                          </div>
+                          <div>
+                            <CardTitle>Nueva Compra</CardTitle>
+                            <CardDescription>
+                              Registra una nueva compra
+                            </CardDescription>
+                          </div>
                         </div>
-                        <div>
-                          <CardTitle>Nueva Compra</CardTitle>
-                          <CardDescription>
-                            Registra una nueva compra
-                          </CardDescription>
-                        </div>
-                      </div>
-                    </CardHeader>
-                  </Card>
-                </Link>
+                      </CardHeader>
+                    </Card>
+                  </Link>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Inventario, Clientes, Reportes y Movimientos */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Link href="/dashboard/inventory">
-                <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+              {/* Inventario - Blur para STORE_MANAGER */}
+              {isStoreManager ? (
+                <Card className="relative h-full opacity-60 cursor-not-allowed">
+                  <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
+                    <div className="text-center p-4">
+                      <p className="text-sm font-medium text-muted-foreground">
+                        No tienes permisos para acceder a esta sección
+                      </p>
+                    </div>
+                  </div>
                   <CardHeader>
                     <div className="flex items-center space-x-3">
                       <div className="p-3 bg-purple-100 rounded-lg">
@@ -232,8 +243,27 @@ export default function DashboardPage() {
                     </div>
                   </CardHeader>
                 </Card>
-              </Link>
+              ) : (
+                <Link href="/dashboard/inventory">
+                  <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+                    <CardHeader>
+                      <div className="flex items-center space-x-3">
+                        <div className="p-3 bg-purple-100 rounded-lg">
+                          <Package className="h-6 w-6 text-purple-600" />
+                        </div>
+                        <div>
+                          <CardTitle>Inventario</CardTitle>
+                          <CardDescription>
+                            Gestiona tus productos y stock
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                  </Card>
+                </Link>
+              )}
 
+              {/* Clientes - Siempre accesible */}
               <Link href="/dashboard/customers">
                 <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
                   <CardHeader>
@@ -252,8 +282,16 @@ export default function DashboardPage() {
                 </Card>
               </Link>
 
-              <Link href="/dashboard/stats">
-                <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+              {/* Reportes - Blur para STORE_MANAGER */}
+              {isStoreManager ? (
+                <Card className="relative h-full opacity-60 cursor-not-allowed">
+                  <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
+                    <div className="text-center p-4">
+                      <p className="text-sm font-medium text-muted-foreground">
+                        No tienes permisos para acceder a esta sección
+                      </p>
+                    </div>
+                  </div>
                   <CardHeader>
                     <div className="flex items-center space-x-3">
                       <div className="p-3 bg-orange-100 rounded-lg">
@@ -268,10 +306,36 @@ export default function DashboardPage() {
                     </div>
                   </CardHeader>
                 </Card>
-              </Link>
+              ) : (
+                <Link href="/dashboard/stats">
+                  <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+                    <CardHeader>
+                      <div className="flex items-center space-x-3">
+                        <div className="p-3 bg-orange-100 rounded-lg">
+                          <TrendingUp className="h-6 w-6 text-orange-600" />
+                        </div>
+                        <div>
+                          <CardTitle>Reportes y Estadísticas</CardTitle>
+                          <CardDescription>
+                            Visualiza tus ventas, ganancias y análisis
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                  </Card>
+                </Link>
+              )}
 
-              <Link href="/dashboard/movements">
-                <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+              {/* Movimientos - Blur para STORE_MANAGER */}
+              {isStoreManager ? (
+                <Card className="relative h-full opacity-60 cursor-not-allowed">
+                  <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
+                    <div className="text-center p-4">
+                      <p className="text-sm font-medium text-muted-foreground">
+                        No tienes permisos para acceder a esta sección
+                      </p>
+                    </div>
+                  </div>
                   <CardHeader>
                     <div className="flex items-center space-x-3">
                       <div className="p-3 bg-cyan-100 rounded-lg">
@@ -286,7 +350,25 @@ export default function DashboardPage() {
                     </div>
                   </CardHeader>
                 </Card>
-              </Link>
+              ) : (
+                <Link href="/dashboard/movements">
+                  <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+                    <CardHeader>
+                      <div className="flex items-center space-x-3">
+                        <div className="p-3 bg-cyan-100 rounded-lg">
+                          <Receipt className="h-6 w-6 text-cyan-600" />
+                        </div>
+                        <div>
+                          <CardTitle>Movimientos</CardTitle>
+                          <CardDescription>
+                            Ver y gestionar todas tus compras y ventas
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                  </Card>
+                </Link>
+              )}
             </div>
           </>
         )}

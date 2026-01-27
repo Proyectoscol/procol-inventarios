@@ -15,11 +15,12 @@ import { CustomerForm } from "@/components/forms/CustomerForm"
 interface CustomerDetailsModalProps {
   customer: Customer
   companyId: string
+  isStoreManager?: boolean
   onClose: () => void
   onCustomerUpdated?: (updatedCustomer: Customer) => void
 }
 
-export function CustomerDetailsModal({ customer, companyId, onClose, onCustomerUpdated }: CustomerDetailsModalProps) {
+export function CustomerDetailsModal({ customer, companyId, isStoreManager = false, onClose, onCustomerUpdated }: CustomerDetailsModalProps) {
   const router = useRouter()
   const [currentCustomer, setCurrentCustomer] = useState<Customer>(customer)
   const [movements, setMovements] = useState<Movement[]>([])
@@ -211,8 +212,8 @@ export function CustomerDetailsModal({ customer, companyId, onClose, onCustomerU
             </Card>
           ) : (
             <>
-          {/* Resumen */}
-          {summary && (
+          {/* Resumen - Oculto para STORE_MANAGER */}
+          {summary && !isStoreManager && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               <Card className="bg-blue-50 border-blue-200">
                 <CardHeader className="pb-2">
@@ -288,9 +289,10 @@ export function CustomerDetailsModal({ customer, companyId, onClose, onCustomerU
             </div>
           )}
 
-          {/* Lista de Movimientos */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Historial de Ventas</h3>
+          {/* Lista de Movimientos - Oculto para STORE_MANAGER */}
+          {!isStoreManager && (
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Historial de Ventas</h3>
             {movements.length === 0 ? (
               <Card>
                 <CardContent className="p-8 text-center">
@@ -359,7 +361,8 @@ export function CustomerDetailsModal({ customer, companyId, onClose, onCustomerU
                 ))}
               </div>
             )}
-          </div>
+            </div>
+          )}
             </>
           )}
         </CardContent>

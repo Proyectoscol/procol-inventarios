@@ -113,7 +113,8 @@ export default function OnboardingPage() {
       }
 
       toast.success("Te has unido a la compañía exitosamente")
-      router.push("/dashboard/customers")
+      // Forzar refresh de sesión para actualizar userType
+      window.location.href = "/dashboard/customers"
     } catch (err: any) {
       toast.error(err.message || "Error al unirse a la compañía")
     } finally {

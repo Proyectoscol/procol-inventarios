@@ -19,18 +19,22 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const validated = joinCompanySchema.parse(body)
 
-    // Verificar que el usuario no tenga ya un tipo asignado
+    // Verificar el tipo de usuario actual
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: { userType: true }
     })
 
-    if (user?.userType) {
+    // Si el usuario ya tiene un tipo y es diferente al que está intentando establecer, rechazar
+    if (user?.userType && user.userType !== validated.userType) {
       return NextResponse.json(
         { error: "El tipo de usuario ya está establecido y no se puede cambiar" },
         { status: 400 }
       )
     }
+
+    // Si el usuario ya tiene el mismo tipo, solo crear la relación (permitir unirse a otra compañía)
+    const shouldUpdateUserType = !user?.userType
 
     // Verificar que la compañía existe
     const company = await prisma.company.findUnique({
@@ -61,12 +65,14 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Actualizar el tipo de usuario y crear la relación con la compañía
+    // Actualizar el tipo de usuario (solo si no lo tiene) y crear la relación con la compañía
     await prisma.$transaction(async (tx) => {
-      await tx.user.update({
-        where: { id: session.user.id },
-        data: { userType: validated.userType }
-      })
+      if (shouldUpdateUserType) {
+        await tx.user.update({
+          where: { id: session.user.id },
+          data: { userType: validated.userType }
+        })
+      }
 
       await tx.userCompany.create({
         data: {

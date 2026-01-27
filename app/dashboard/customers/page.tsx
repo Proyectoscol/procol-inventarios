@@ -21,6 +21,7 @@ export default function CustomersPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const { selectedCompanyId } = useCompany()
+  const isStoreManager = (session?.user as any)?.userType === "STORE_MANAGER"
   const [customers, setCustomers] = useState<any[]>([])
   const [filteredCustomers, setFilteredCustomers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -207,20 +208,22 @@ export default function CustomersPage() {
           </div>
           {selectedCompanyId && (
             <div className="flex gap-2">
-            <Link 
-              href="/dashboard/credits"
-              onClick={() => {
-                // Guardar el referrer para que créditos sepa de dónde vino
-                if (typeof window !== "undefined") {
-                  sessionStorage.setItem("creditsReferrer", "/dashboard/customers")
-                }
-              }}
-            >
-              <Button variant="outline" className="flex items-center gap-2">
-                <DollarSign className="h-4 w-4" />
-                Créditos
-              </Button>
-            </Link>
+              {!isStoreManager && (
+                <Link 
+                  href="/dashboard/credits"
+                  onClick={() => {
+                    // Guardar el referrer para que créditos sepa de dónde vino
+                    if (typeof window !== "undefined") {
+                      sessionStorage.setItem("creditsReferrer", "/dashboard/customers")
+                    }
+                  }}
+                >
+                  <Button variant="outline" className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    Créditos
+                  </Button>
+                </Link>
+              )}
               <Button onClick={() => setShowCreateCustomer(true)}>
                 + Crear Cliente
               </Button>
@@ -301,8 +304,12 @@ export default function CustomersPage() {
                     <option value="name">Alfabético (A-Z)</option>
                     <option value="name-desc">Alfabético (Z-A)</option>
                     <option value="last-movement">Último Movimiento</option>
-                    <option value="pending-credit">Crédito Pendiente</option>
-                    <option value="revenue">Mejor Cliente (Más Ingresos)</option>
+                    {!isStoreManager && (
+                      <>
+                        <option value="pending-credit">Crédito Pendiente</option>
+                        <option value="revenue">Mejor Cliente (Más Ingresos)</option>
+                      </>
+                    )}
                   </Select>
                 </div>
               </div>
@@ -348,21 +355,25 @@ export default function CustomersPage() {
                       </div>
                       
                       <div className="space-y-2 pt-3 border-t">
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-muted-foreground">Crédito Pendiente:</span>
-                          <span className={`font-semibold ${
-                            (customer.pendingCredit || 0) > 0 ? "text-orange-600" : "text-green-600"
-                          }`}>
-                            ${(customer.pendingCredit || 0).toLocaleString("es-CO")} COP
-                          </span>
-                        </div>
-                        
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-muted-foreground">Ingresos Totales:</span>
-                          <span className="font-semibold text-blue-600">
-                            ${(customer.totalRevenue || 0).toLocaleString("es-CO")} COP
-                          </span>
-                        </div>
+                        {!isStoreManager && (
+                          <>
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="text-muted-foreground">Crédito Pendiente:</span>
+                              <span className={`font-semibold ${
+                                (customer.pendingCredit || 0) > 0 ? "text-orange-600" : "text-green-600"
+                              }`}>
+                                ${(customer.pendingCredit || 0).toLocaleString("es-CO")} COP
+                              </span>
+                            </div>
+                            
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="text-muted-foreground">Ingresos Totales:</span>
+                              <span className="font-semibold text-blue-600">
+                                ${(customer.totalRevenue || 0).toLocaleString("es-CO")} COP
+                              </span>
+                            </div>
+                          </>
+                        )}
                         
                         {customer.lastMovementDate && (
                           <div className="flex justify-between items-center text-sm">
@@ -396,6 +407,7 @@ export default function CustomersPage() {
           <CustomerDetailsModal
             customer={selectedCustomer}
             companyId={selectedCompanyId}
+            isStoreManager={isStoreManager}
             onClose={() => setSelectedCustomer(null)}
             onCustomerUpdated={(updatedCustomer) => {
               // Actualizar el cliente en la lista
