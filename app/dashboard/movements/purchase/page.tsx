@@ -6,7 +6,8 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Plus } from "lucide-react"
 import { PurchaseForm } from "@/components/forms/PurchaseForm"
-import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { BackButton } from "@/components/shared/BackButton"
 import { useCompany } from "@/contexts/CompanyContext"
@@ -90,12 +91,16 @@ export default function PurchasePage() {
               Registra una nueva compra de productos para tu inventario
             </p>
           </div>
-          <Button asChild variant="outline" className="shrink-0 w-full sm:w-auto">
-            <Link href="/dashboard/inventory?addProduct=1">
-              <Plus className="mr-2 h-4 w-4" aria-hidden />
-              Crear producto primero
-            </Link>
-          </Button>
+          <Link
+            href="/dashboard/inventory?addProduct=1"
+            className={cn(
+              buttonVariants({ variant: "outline" }),
+              "inline-flex shrink-0 w-full sm:w-auto"
+            )}
+          >
+            <Plus className="mr-2 h-4 w-4" aria-hidden />
+            Crear producto primero
+          </Link>
         </div>
         <Card>
           <CardHeader>

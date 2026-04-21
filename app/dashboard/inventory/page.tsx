@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback, useMemo, useRef } from "react"
+import { Suspense, useEffect, useState, useCallback, useMemo, useRef } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -17,7 +17,7 @@ import { Edit, Package, Calendar, DollarSign, ShoppingCart, Trash2 } from "lucid
 import { toast } from "sonner"
 import { useCompany } from "@/contexts/CompanyContext"
 
-export default function InventoryPage() {
+function InventoryPageContent() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -686,5 +686,13 @@ export default function InventoryPage() {
         <BackButton href="/dashboard" />
       </div>
     </div>
+  )
+}
+
+export default function InventoryPage() {
+  return (
+    <Suspense fallback={<div className="p-8">Cargando...</div>}>
+      <InventoryPageContent />
+    </Suspense>
   )
 }
