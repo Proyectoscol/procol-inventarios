@@ -38,6 +38,8 @@ interface QuickProductCreationModalProps {
   companyId: string
   warehouses: Array<{ id: string; name: string }>
   initialProductName?: string
+  /** Si viene de inventario u otra pantalla con bodega ya elegida, preselecciona paso 1 y 2 */
+  initialWarehouseId?: string
   onSuccess: (productId: string) => void
   onCancel: () => void
 }
@@ -46,6 +48,7 @@ export function QuickProductCreationModal({
   companyId,
   warehouses,
   initialProductName = "",
+  initialWarehouseId = "",
   onSuccess,
   onCancel
 }: QuickProductCreationModalProps) {
@@ -66,7 +69,7 @@ export function QuickProductCreationModal({
       description: "",
       imageBase64: "",
       minStockThreshold: 0,
-      warehouseId: ""
+      warehouseId: initialWarehouseId || ""
     }
   })
 
@@ -75,7 +78,7 @@ export function QuickProductCreationModal({
     resolver: zodResolver(purchaseFormSchema),
     defaultValues: {
       priceType: "unit",
-      warehouseId: ""
+      warehouseId: initialWarehouseId || ""
     }
   })
 

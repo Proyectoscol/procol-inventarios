@@ -406,6 +406,7 @@ export function CustomerDetailsModal({ customer, companyId, isStoreManager = fal
       {/* Modal de edición */}
       {editingMovement && (
         <EditMovementModal
+          key={editingMovement.id}
           movement={editingMovement}
           companyId={companyId}
           warehouses={warehouses}

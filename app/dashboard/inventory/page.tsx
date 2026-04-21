@@ -2,13 +2,13 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react"
 import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
-import { ProductForm } from "@/components/forms/ProductForm"
+import { QuickProductCreationModal } from "@/components/modals/QuickProductCreationModal"
 import { BackButton } from "@/components/shared/BackButton"
 import { EditProductModal } from "@/components/modals/EditProductModal"
 import { EditThresholdModal } from "@/components/modals/EditThresholdModal"
@@ -20,6 +20,7 @@ import { useCompany } from "@/contexts/CompanyContext"
 export default function InventoryPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { selectedCompanyId } = useCompany()
   const [products, setProducts] = useState<any[]>([])
   const [filteredProducts, setFilteredProducts] = useState<any[]>([])
@@ -37,7 +38,6 @@ export default function InventoryPage() {
   const [inventoryValue, setInventoryValue] = useState<number | null>(null)
   const [loadingInventoryValue, setLoadingInventoryValue] = useState(false)
   const isMountedRef = useRef(true)
-  const fetchingDetailsRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     isMountedRef.current = true
@@ -51,6 +51,13 @@ export default function InventoryPage() {
       router.push("/login")
     }
   }, [status, router])
+
+  useEffect(() => {
+    if (searchParams.get("addProduct") === "1") {
+      setShowAddProduct(true)
+      router.replace("/dashboard/inventory", { scroll: false })
+    }
+  }, [searchParams, router])
 
   useEffect(() => {
     if (selectedCompanyId) {
@@ -238,104 +245,20 @@ export default function InventoryPage() {
 
   const fetchProducts = async (compId: string, warehouseId: string) => {
     try {
-      const res = await fetch(`/api/companies/${compId}/products`)
+      const res = await fetch(
+        `/api/companies/${compId}/products/inventory?warehouseId=${encodeURIComponent(warehouseId)}`
+      )
       if (res.ok) {
         const data = await res.json()
-        
-        // Enriquecer con información de movimientos y fechas
-        const enrichedProducts = await Promise.all(
-          data.map(async (product: any) => {
-            try {
-              // Obtener información completa del producto
-              const productRes = await fetch(`/api/products/${product.id}`)
-              let productData = product
-              if (productRes.ok) {
-                productData = await productRes.json()
-              }
-
-              // Obtener último movimiento de compra
-              let lastPurchaseDate = null
-              try {
-                const lastPurchaseRes = await fetch(`/api/products/${product.id}/last-purchase?warehouseId=${warehouseId}`)
-                if (lastPurchaseRes.ok) {
-                  const purchaseData = await lastPurchaseRes.json()
-                  lastPurchaseDate = purchaseData.lastPurchaseDate ? new Date(purchaseData.lastPurchaseDate) : null
-                }
-              } catch {
-                // Ignorar errores
-              }
-
-              // Obtener último movimiento de venta
-              let lastSaleDate = null
-              try {
-                const lastSaleRes = await fetch(`/api/products/${product.id}/last-sale?warehouseId=${warehouseId}`)
-                if (lastSaleRes.ok) {
-                  const saleData = await lastSaleRes.json()
-                  lastSaleDate = saleData.lastSaleDate ? new Date(saleData.lastSaleDate) : null
-                }
-              } catch {
-                // Ignorar errores
-              }
-
-              return {
-                ...product,
-                ...productData,
-                _count: productData._count || { movements: 0 },
-                movements: productData.movements || [],
-                lastPurchaseDate,
-                lastSaleDate
-              }
-            } catch {
-              return product
-            }
-          })
-        )
-        
         if (isMountedRef.current) {
-          setProducts(enrichedProducts)
-          
-          // Cargar detalles de último pedido para cada producto (con debounce para evitar múltiples llamadas)
-          enrichedProducts.forEach((product: any) => {
-            if (!fetchingDetailsRef.current.has(product.id)) {
-              fetchingDetailsRef.current.add(product.id)
-              // Usar setTimeout para evitar múltiples actualizaciones simultáneas
-              setTimeout(() => {
-                if (isMountedRef.current) {
-                  fetchProductDetails(product.id, warehouseId)
-                }
-                fetchingDetailsRef.current.delete(product.id)
-              }, 0)
-            }
-          })
+          setProducts(data.products || [])
+          setProductDetails(data.detailsByProductId || {})
         }
       }
     } catch (error) {
       console.error("Error cargando productos:", error)
     }
   }
-
-  const fetchProductDetails = useCallback(async (productId: string, warehouseId: string) => {
-    if (!isMountedRef.current) return
-    
-    try {
-      const res = await fetch(`/api/products/${productId}/last-purchase?warehouseId=${warehouseId}`)
-      if (res.ok && isMountedRef.current) {
-        const data = await res.json()
-        setProductDetails(prev => {
-          // Solo actualizar si el componente sigue montado
-          if (!isMountedRef.current) return prev
-          return {
-            ...prev,
-            [productId]: data
-          }
-        })
-      }
-    } catch (error) {
-      if (isMountedRef.current) {
-        console.error("Error cargando detalles del producto:", error)
-      }
-    }
-  }, [])
 
   const handleEditProduct = (product: any) => {
     setEditingProduct(product)
@@ -505,32 +428,19 @@ export default function InventoryPage() {
       </Card>
 
       {showAddProduct && selectedCompanyId && (
-        <Card className="mb-6 border-2 border-primary">
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <CardTitle>Agregar Nuevo Producto</CardTitle>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setShowAddProduct(false)}
-              >
-                ✕ Cerrar
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <ProductForm
-              companyId={selectedCompanyId}
-              onSuccess={() => {
-                setShowAddProduct(false)
-                if (selectedCompanyId && selectedWarehouseId) {
-                  fetchProducts(selectedCompanyId, selectedWarehouseId)
-                }
-              }}
-              onCancel={() => setShowAddProduct(false)}
-            />
-          </CardContent>
-        </Card>
+        <QuickProductCreationModal
+          companyId={selectedCompanyId}
+          warehouses={warehouses.map((w) => ({ id: w.id, name: w.name }))}
+          initialWarehouseId={selectedWarehouseId || undefined}
+          onSuccess={() => {
+            setShowAddProduct(false)
+            if (selectedCompanyId && selectedWarehouseId) {
+              fetchProducts(selectedCompanyId, selectedWarehouseId)
+              fetchInventoryValue(selectedWarehouseId)
+            }
+          }}
+          onCancel={() => setShowAddProduct(false)}
+        />
       )}
 
       {selectedWarehouseId && (

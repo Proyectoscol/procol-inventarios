@@ -243,6 +243,7 @@ export function DayDetailsModal({ date, companyId, onClose }: DayDetailsModalPro
       {/* Modal de edición de movimiento */}
       {editingMovement && warehouses.length > 0 && (
         <EditMovementModal
+          key={editingMovement.id}
           movement={editingMovement}
           companyId={companyId}
           warehouses={warehouses}

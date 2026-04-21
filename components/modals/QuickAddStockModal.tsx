@@ -30,26 +30,40 @@ export function QuickAddStockModal({
   onSuccess,
   onCancel
 }: QuickAddStockModalProps) {
-  const [quantity, setQuantity] = useState<number>(initialQuantity || 1)
+  const defaultQty = initialQuantity != null && initialQuantity > 0 ? initialQuantity : 1
+  const [quantityInput, setQuantityInput] = useState(() => String(defaultQty))
   const [price, setPrice] = useState<number>(0)
   const [priceType, setPriceType] = useState<"unit" | "total">("unit")
   const [loading, setLoading] = useState(false)
   const [lastCost, setLastCost] = useState<number | null>(null)
 
-  // Obtener último costo unitario
+  const quantity =
+    quantityInput.trim() === ""
+      ? 0
+      : Math.max(0, parseInt(quantityInput.replace(/\D/g, ""), 10) || 0)
+
+  // Al abrir o cambiar producto/bodega: resetear campos y cargar último costo (sin depender de `price` — si no, al borrar el costo se vuelve a rellenar)
   useEffect(() => {
+    let cancelled = false
+    setQuantityInput(String(defaultQty))
+    setPrice(0)
+    setLastCost(null)
+
     fetch(`/api/products/${productId}/last-purchase?warehouseId=${warehouseId}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.lastPurchasePrice) {
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return
+        if (data.lastPurchasePrice != null) {
           setLastCost(data.lastPurchasePrice)
-          if (!price || price === 0) {
-            setPrice(data.lastPurchasePrice)
-          }
+          setPrice(data.lastPurchasePrice)
         }
       })
       .catch(() => {})
-  }, [productId, warehouseId, price])
+
+    return () => {
+      cancelled = true
+    }
+  }, [productId, warehouseId, defaultQty])
 
   const unitPrice = priceType === "unit" ? price : (quantity > 0 ? price / quantity : 0)
   const totalPrice = priceType === "unit" ? (price * quantity) : price
@@ -157,13 +171,12 @@ export function QuickAddStockModal({
           <div>
             <Label>Cantidad *</Label>
             <Input
-              type="number"
+              type="text"
               inputMode="numeric"
-              min="1"
-              value={quantity}
+              value={quantityInput}
               onChange={(e) => {
-                const val = parseInt(e.target.value) || 0
-                setQuantity(val > 0 ? val : 1)
+                const digits = e.target.value.replace(/\D/g, "")
+                setQuantityInput(digits)
               }}
               placeholder="0"
             />
@@ -201,7 +214,7 @@ export function QuickAddStockModal({
             )}
 
             <CurrencyInput
-              value={price || 0}
+              value={price}
               onChange={(val) => setPrice(val)}
               placeholder={lastCost ? lastCost.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") : (priceType === "unit" ? "10,000" : "100,000")}
             />

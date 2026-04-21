@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useForm } from "react-hook-form"
+import { useState, useEffect, useCallback } from "react"
+import { useForm, type FieldErrors } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,6 +15,18 @@ import { toast } from "sonner"
 import { X } from "lucide-react"
 import { Movement } from "@/types"
 
+function firstErrorMessage(errors: Record<string, unknown> | undefined): string | undefined {
+  if (!errors) return undefined
+  for (const v of Object.values(errors)) {
+    if (!v || typeof v !== "object") continue
+    const err = v as { message?: string }
+    if (typeof err.message === "string" && err.message) return err.message
+    const nested = firstErrorMessage(v as Record<string, unknown>)
+    if (nested) return nested
+  }
+  return undefined
+}
+
 // Schema para ventas
 const editSaleSchema = z.object({
   productId: z.string().min(1, "Selecciona un producto"),
@@ -26,16 +38,21 @@ const editSaleSchema = z.object({
   creditDays: z.number().int().min(1).optional(),
   hasShipping: z.boolean().default(false),
   shippingCost: z.number().optional(),
-  shippingPaidBy: z.enum(["seller", "customer"]).optional(),
+  // Prisma / JSON pueden enviar null; .optional() no acepta null en enum
+  shippingPaidBy: z
+    .union([z.enum(["seller", "customer"]), z.null(), z.undefined()])
+    .optional()
+    .transform((v) => (v === "seller" || v === "customer" ? v : "customer")),
   notes: z.string().optional()
 }).refine((data) => {
-  if (data.paymentType === "mixed") {
-    return data.cashAmount && data.creditAmount &&
-           data.cashAmount + data.creditAmount === data.unitPrice * data.quantity
-  }
-  return true
+  if (data.paymentType !== "mixed") return true
+  const total = data.unitPrice * data.quantity
+  const cash = Number(data.cashAmount ?? 0)
+  const credit = Number(data.creditAmount ?? 0)
+  // Tolerancia por redondeo de COP / decimales (antes fallaba con === y con 0 válido)
+  return Math.abs(cash + credit - total) < 0.02
 }, {
-  message: "En pago mixto, la suma debe igualar el total",
+  message: "En pago mixto, contado + crédito debe igualar el total de la venta",
   path: ["cashAmount"]
 }).refine((data) => {
   if (data.paymentType === "credit" || data.paymentType === "mixed") {
@@ -56,6 +73,36 @@ const editPurchaseSchema = z.object({
 type EditSaleFormData = z.infer<typeof editSaleSchema>
 type EditPurchaseFormData = z.infer<typeof editPurchaseSchema>
 type EditMovementFormData = EditSaleFormData | EditPurchaseFormData
+
+function getSaleDefaultValues(movement: Movement): EditSaleFormData {
+  const payment = movement.paymentType as "cash" | "credit" | "mixed"
+  const needsCreditDays = payment === "credit" || payment === "mixed"
+  const creditDays =
+    needsCreditDays &&
+    movement.creditDays != null &&
+    Number(movement.creditDays) > 0
+      ? Number(movement.creditDays)
+      : needsCreditDays
+        ? 15
+        : undefined
+
+  return {
+    productId: movement.productId,
+    quantity: Number(movement.quantity),
+    unitPrice: Number(movement.unitPrice),
+    paymentType: payment,
+    cashAmount: movement.cashAmount != null ? Number(movement.cashAmount) : undefined,
+    creditAmount: movement.creditAmount != null ? Number(movement.creditAmount) : undefined,
+    creditDays,
+    hasShipping: movement.hasShipping || false,
+    shippingCost: movement.shippingCost != null ? Number(movement.shippingCost) : undefined,
+    shippingPaidBy:
+      movement.shippingPaidBy === "seller" || movement.shippingPaidBy === "customer"
+        ? movement.shippingPaidBy
+        : "customer",
+    notes: movement.notes ?? "",
+  }
+}
 
 interface EditMovementModalProps {
   movement: Movement
@@ -78,19 +125,7 @@ export function EditMovementModal({ movement, companyId, warehouses, onSuccess, 
   
   const saleForm = useForm<EditSaleFormData>({
     resolver: zodResolver(editSaleSchema),
-    defaultValues: {
-      productId: movement.productId,
-      quantity: Number(movement.quantity),
-      unitPrice: Number(movement.unitPrice),
-      paymentType: movement.paymentType as "cash" | "credit" | "mixed",
-      cashAmount: movement.cashAmount ? Number(movement.cashAmount) : undefined,
-      creditAmount: movement.creditAmount ? Number(movement.creditAmount) : undefined,
-      creditDays: movement.creditDays || undefined,
-      hasShipping: movement.hasShipping || false,
-      shippingCost: movement.shippingCost ? Number(movement.shippingCost) : undefined,
-      shippingPaidBy: movement.shippingPaidBy as "seller" | "customer" | undefined,
-      notes: movement.notes || ""
-    }
+    defaultValues: getSaleDefaultValues(movement),
   })
 
   const purchaseForm = useForm<EditPurchaseFormData>({
@@ -100,6 +135,28 @@ export function EditMovementModal({ movement, companyId, warehouses, onSuccess, 
       unitPrice: Number(movement.unitPrice)
     }
   })
+
+  const handleProductSelect = useCallback(
+    (product: { id: string; name: string; nameLower: string }) => {
+      setSelectedProduct(product)
+      saleForm.setValue("productId", product.id, { shouldValidate: true })
+    },
+    [saleForm]
+  )
+
+  const onInvalidSale = useCallback((errors: FieldErrors<EditSaleFormData>) => {
+    const msg = firstErrorMessage(errors as Record<string, unknown>)
+    toast.error("No se puede guardar", {
+      description: msg || "Revisa producto, cantidad, precio, tipo de pago y días de crédito.",
+    })
+  }, [])
+
+  const onInvalidPurchase = useCallback((errors: FieldErrors<EditPurchaseFormData>) => {
+    const msg = firstErrorMessage(errors as Record<string, unknown>)
+    toast.error("No se puede guardar", {
+      description: msg || "Revisa cantidad y costo unitario.",
+    })
+  }, [])
 
   // Watch values from the appropriate form
   const quantity = isPurchase ? purchaseForm.watch("quantity") : saleForm.watch("quantity")
@@ -263,7 +320,14 @@ export function EditMovementModal({ movement, companyId, warehouses, onSuccess, 
           </div>
         </CardHeader>
         <CardContent className="p-6">
-          <form onSubmit={isPurchase ? purchaseForm.handleSubmit(onSubmit) : saleForm.handleSubmit(onSubmit)} className="space-y-6">
+          <form
+            onSubmit={
+              isPurchase
+                ? purchaseForm.handleSubmit(onSubmit, onInvalidPurchase)
+                : saleForm.handleSubmit(onSubmit, onInvalidSale)
+            }
+            className="space-y-6"
+          >
             {isPurchase ? (
               // ========== FORMULARIO DE COMPRA ==========
               <>
@@ -359,10 +423,7 @@ export function EditMovementModal({ movement, companyId, warehouses, onSuccess, 
               <ProductSearch
                 companyId={companyId}
                 preselectedProductId={movement.productId}
-                onSelect={(product) => {
-                  setSelectedProduct(product)
-                  setValue("productId", product.id, { shouldValidate: true })
-                }}
+                onSelect={handleProductSelect}
               />
               {saleForm.formState.errors.productId && (
                 <p className="text-sm text-red-500">{saleForm.formState.errors.productId.message}</p>

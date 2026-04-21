@@ -366,6 +366,26 @@ export async function PUT(
   }
 }
 
+type FifoLine = { batchId: string; quantity: number }
+
+function parseFifoBreakdown(raw: unknown): FifoLine[] | null {
+  if (!raw || !Array.isArray(raw)) return null
+  const lines: FifoLine[] = []
+  for (const item of raw) {
+    if (
+      item &&
+      typeof item === "object" &&
+      "batchId" in item &&
+      "quantity" in item &&
+      typeof (item as FifoLine).batchId === "string" &&
+      typeof (item as FifoLine).quantity === "number"
+    ) {
+      lines.push({ batchId: (item as FifoLine).batchId, quantity: (item as FifoLine).quantity })
+    }
+  }
+  return lines.length > 0 ? lines : null
+}
+
 export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -376,75 +396,111 @@ export async function DELETE(
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
-    const movement = await prisma.movement.findUnique({
-      where: { id: params.id }
-    })
+    const movementId = params.id
 
-    if (!movement) {
-      return NextResponse.json({ error: "Movimiento no encontrado" }, { status: 404 })
-    }
-
-    // Revertir cambios según el tipo
-    if (movement.type === "sale") {
-      // Devolver stock
-      await prisma.stock.update({
-        where: {
-          productId_warehouseId: {
-            productId: movement.productId,
-            warehouseId: movement.warehouseId
-          }
-        },
-        data: {
-          quantity: { increment: movement.quantity }
-        }
+    await prisma.$transaction(async (tx) => {
+      const movement = await tx.movement.findUnique({
+        where: { id: movementId },
+        include: { product: true, warehouse: true }
       })
 
-      // Revertir lotes si existe
-      if (movement.batchId) {
-        const batch = await prisma.batch.findUnique({
-          where: { id: movement.batchId }
-        })
-        if (batch) {
-          await prisma.batch.update({
-            where: { id: movement.batchId },
-            data: {
-              remainingQty: { increment: movement.quantity }
+      if (!movement) {
+        throw Object.assign(new Error("Movimiento no encontrado"), { status: 404 })
+      }
+
+      if (movement.type === "sale") {
+        await tx.stock.update({
+          where: {
+            productId_warehouseId: {
+              productId: movement.productId,
+              warehouseId: movement.warehouseId
             }
+          },
+          data: {
+            quantity: { increment: movement.quantity }
+          }
+        })
+
+        const fifo = parseFifoBreakdown(movement.fifoBreakdown)
+        if (fifo) {
+          for (const line of fifo) {
+            await tx.batch.update({
+              where: { id: line.batchId },
+              data: { remainingQty: { increment: line.quantity } }
+            })
+          }
+        } else if (movement.batchId) {
+          await tx.batch.update({
+            where: { id: movement.batchId },
+            data: { remainingQty: { increment: movement.quantity } }
           })
         }
+
+        await tx.movement.delete({ where: { id: movementId } })
+        return
       }
-    } else if (movement.type === "purchase") {
-      // Reducir stock
-      await prisma.stock.update({
-        where: {
-          productId_warehouseId: {
-            productId: movement.productId,
-            warehouseId: movement.warehouseId
-          }
-        },
-        data: {
-          quantity: { decrement: movement.quantity }
+
+      if (movement.type === "purchase") {
+        const batch =
+          movement.batchId
+            ? await tx.batch.findUnique({ where: { id: movement.batchId } })
+            : await tx.batch.findFirst({
+                where: {
+                  batchNumber: movement.movementNumber,
+                  productId: movement.productId,
+                  warehouseId: movement.warehouseId
+                }
+              })
+
+        if (!batch) {
+          throw Object.assign(
+            new Error(
+              "No se encontró el lote de inventario asociado a esta compra. No se puede eliminar de forma segura."
+            ),
+            { status: 400 }
+          )
         }
-      })
 
-      // Eliminar lote
-      if (movement.batchId) {
-        await prisma.batch.delete({
-          where: { id: movement.batchId }
+        const soldFromBatch = batch.initialQuantity - batch.remainingQty
+        if (soldFromBatch > 0) {
+          throw Object.assign(
+            new Error(
+              `No se puede eliminar esta compra: ya se vendieron ${soldFromBatch} unidades de este lote. ` +
+                `Anula o ajusta esas ventas primero, o reduce la compra desde Editar si solo necesitas corregir cantidades.`
+            ),
+            { status: 400 }
+          )
+        }
+
+        await tx.stock.update({
+          where: {
+            productId_warehouseId: {
+              productId: movement.productId,
+              warehouseId: movement.warehouseId
+            }
+          },
+          data: {
+            quantity: { decrement: movement.quantity }
+          }
         })
-      }
-    }
 
-    // Eliminar movimiento
-    await prisma.movement.delete({
-      where: { id: params.id }
+        await tx.batch.delete({ where: { id: batch.id } })
+        await tx.movement.delete({ where: { id: movementId } })
+        return
+      }
+
+      throw Object.assign(new Error("Tipo de movimiento no soportado"), { status: 400 })
     })
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
+    const status = typeof error?.status === "number" ? error.status : 500
+    if (status !== 500) {
+      return NextResponse.json({ error: error.message }, { status })
+    }
     console.error("Error eliminando movimiento:", error)
     return NextResponse.json(
-      { error: error.message },
+      { error: error.message || "Error eliminando movimiento" },
       { status: 500 }
     )
   }

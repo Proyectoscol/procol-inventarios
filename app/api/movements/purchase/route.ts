@@ -60,13 +60,14 @@ export async function POST(req: NextRequest) {
         }
       })
       
-      // Crear movimiento con fecha en zona horaria de Colombia
+      // Crear movimiento con fecha en zona horaria de Colombia (vinculado al lote para poder revertir)
       const movement = await tx.movement.create({
         data: {
           movementNumber: batchNumber,
           type: "purchase",
           productId: data.productId,
           warehouseId: data.warehouseId,
+          batchId: batch.id,
           quantity: data.quantity,
           unitPrice: unitCost,
           totalAmount: unitCost * data.quantity,

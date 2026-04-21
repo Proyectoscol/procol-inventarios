@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { Plus } from "lucide-react"
 import { PurchaseForm } from "@/components/forms/PurchaseForm"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { BackButton } from "@/components/shared/BackButton"
 import { useCompany } from "@/contexts/CompanyContext"
@@ -80,11 +83,19 @@ export default function PurchasePage() {
         <div className="mb-6">
           <BackButton href="/dashboard" />
         </div>
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold">Nueva Compra</h1>
-          <p className="text-muted-foreground mt-1">
-            Registra una nueva compra de productos para tu inventario
-          </p>
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Nueva Compra</h1>
+            <p className="text-muted-foreground mt-1">
+              Registra una nueva compra de productos para tu inventario
+            </p>
+          </div>
+          <Button asChild variant="outline" className="shrink-0 w-full sm:w-auto">
+            <Link href="/dashboard/inventory?addProduct=1">
+              <Plus className="mr-2 h-4 w-4" aria-hidden />
+              Crear producto primero
+            </Link>
+          </Button>
         </div>
         <Card>
           <CardHeader>

@@ -18,12 +18,21 @@ import {
   User as UserIcon,
   Warehouse,
   Calendar,
-  RotateCcw
+  RotateCcw,
+  Trash2
 } from "lucide-react"
 import { formatColombiaDate, formatColombiaTime } from "@/lib/date-utils"
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency, cn } from "@/lib/utils"
 import { useCompany } from "@/contexts/CompanyContext"
-import { cn } from "@/lib/utils"
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 export default function MovementsPage() {
   const { data: session, status } = useSession()
@@ -35,6 +44,8 @@ export default function MovementsPage() {
   const [warehouses, setWarehouses] = useState<any[]>([])
   const [selectedWarehouseIds, setSelectedWarehouseIds] = useState<Set<string>>(new Set())
   const [isLoadingMovements, setIsLoadingMovements] = useState(false)
+  const [movementToDelete, setMovementToDelete] = useState<any | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   
   // Estado para el rango de fechas - Por defecto: todo el historial
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>(() => {
@@ -175,10 +186,36 @@ export default function MovementsPage() {
 
   const handleEditSuccess = () => {
     if (selectedCompanyId) {
-      fetchMovements(selectedCompanyId)
+      fetchMovements(selectedCompanyId, Array.from(selectedWarehouseIds))
     }
     setSelectedMovement(null)
     toast.success("Movimiento actualizado exitosamente")
+  }
+
+  const confirmDeleteMovement = async () => {
+    if (!movementToDelete) return
+    setIsDeleting(true)
+    try {
+      const res = await fetch(`/api/movements/${movementToDelete.id}`, { method: "DELETE" })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(body.error || "No se pudo eliminar el movimiento")
+        return
+      }
+      toast.success(
+        movementToDelete.type === "sale"
+          ? "Venta eliminada. El inventario y los lotes se restauraron."
+          : "Compra eliminada. El inventario se actualizó y el lote se quitó."
+      )
+      setMovementToDelete(null)
+      if (selectedCompanyId) {
+        fetchMovements(selectedCompanyId, Array.from(selectedWarehouseIds))
+      }
+    } catch {
+      toast.error("Error de red al eliminar el movimiento")
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   const handleViewPDF = (movementId: string) => {
@@ -462,6 +499,15 @@ export default function MovementsPage() {
                               <Edit className="h-4 w-4 mr-2" />
                               Editar
                             </Button>
+                            <Button
+                              onClick={() => setMovementToDelete(movement)}
+                              variant="outline"
+                              size="sm"
+                              className="w-full border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Eliminar
+                            </Button>
                             {isSale && (
                               <>
                                 <Button
@@ -499,6 +545,7 @@ export default function MovementsPage() {
       {/* Modal de edición */}
       {selectedMovement && selectedCompanyId && (
         <EditMovementModal
+          key={selectedMovement.id}
           movement={selectedMovement}
           companyId={selectedCompanyId}
           warehouses={warehouses}
@@ -506,6 +553,67 @@ export default function MovementsPage() {
           onClose={() => setSelectedMovement(null)}
         />
       )}
+
+      <AlertDialog
+        open={!!movementToDelete}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) setMovementToDelete(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {movementToDelete?.type === "sale" ? "Eliminar venta" : "Eliminar compra"}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                {movementToDelete?.type === "sale" ? (
+                  <>
+                    <p>
+                      Se borrará el registro{" "}
+                      <span className="font-mono font-semibold text-foreground">
+                        {movementToDelete?.movementNumber}
+                      </span>{" "}
+                      y se devolverán{" "}
+                      <span className="font-semibold text-foreground">
+                        {movementToDelete?.quantity} unidades
+                      </span>{" "}
+                      al inventario y a los lotes (costos) como si la venta no hubiera existido.
+                    </p>
+                    <p>Esta acción no se puede deshacer.</p>
+                  </>
+                ) : (
+                  <>
+                    <p>
+                      Se borrará la compra{" "}
+                      <span className="font-mono font-semibold text-foreground">
+                        {movementToDelete?.movementNumber}
+                      </span>{" "}
+                      y se quitarán las unidades del inventario solo si ninguna venta ya consumió
+                      mercancía de ese lote.
+                    </p>
+                    <p>
+                      Si el sistema indica que ya hay ventas sobre ese lote, primero debes corregir
+                      o eliminar esas ventas, o usar <strong className="text-foreground">Editar</strong>{" "}
+                      para ajustar la compra.
+                    </p>
+                  </>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              disabled={isDeleting}
+              onClick={confirmDeleteMovement}
+            >
+              {isDeleting ? "Eliminando…" : "Eliminar definitivamente"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

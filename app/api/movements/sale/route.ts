@@ -69,6 +69,7 @@ export async function POST(req: NextRequest) {
     let remainingToSell = data.quantity
     let totalCost = 0
     const batchUpdates: Array<{ batchId: string; newRemaining: number }> = []
+    const fifoBreakdown: Array<{ batchId: string; quantity: number }> = []
     
     for (const batch of batches) {
       if (remainingToSell <= 0) break
@@ -79,6 +80,7 @@ export async function POST(req: NextRequest) {
       totalCost += costFromBatch
       remainingToSell -= qtyFromBatch
       
+      fifoBreakdown.push({ batchId: batch.id, quantity: qtyFromBatch })
       batchUpdates.push({
         batchId: batch.id,
         newRemaining: batch.remainingQty - qtyFromBatch
@@ -157,6 +159,7 @@ export async function POST(req: NextRequest) {
           productId: data.productId,
           warehouseId: data.warehouseId,
           batchId: batchUpdates[0].batchId,
+          fifoBreakdown,
           quantity: data.quantity,
           unitPrice: data.unitPrice,
           totalAmount: totalAmount,
