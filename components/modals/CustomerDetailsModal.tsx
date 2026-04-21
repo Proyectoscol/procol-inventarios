@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { X, ShoppingCart, DollarSign, TrendingUp, Package, Calendar, CreditCard, Edit } from "lucide-react"
+import { X, ShoppingCart, DollarSign, TrendingUp, Package, Calendar, CreditCard, Edit, FileText } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { toast } from "sonner"
@@ -77,6 +77,14 @@ export function CustomerDetailsModal({ customer, companyId, isStoreManager = fal
   const handleEditSuccess = () => {
     fetchCustomerMovements()
     setEditingMovement(null)
+  }
+
+  const handleViewPDF = (movementId: string) => {
+    window.open(`/api/movements/sale/${movementId}/invoice`, "_blank")
+  }
+
+  const handleViewShippingLabel = (movementId: string) => {
+    window.open(`/api/movements/sale/${movementId}/shipping-label`, "_blank")
   }
 
   const handleCustomerUpdateSuccess = (updatedCustomer?: Customer) => {
@@ -307,54 +315,81 @@ export function CustomerDetailsModal({ customer, companyId, isStoreManager = fal
                 {movements.map((movement) => (
                   <Card key={movement.id} className="border-green-100 bg-green-50 hover:shadow-md transition-shadow">
                     <CardContent className="p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex items-center gap-2">
-                          <ShoppingCart className="h-5 w-5 text-green-600" />
-                          <span className="font-semibold text-lg">Venta</span>
-                          <span className="text-sm text-muted-foreground">
-                            ({format(new Date(movement.movementDate), "PPP 'a las' HH:mm", { locale: es })})
-                          </span>
+                      <div className="flex flex-col gap-4 md:flex-row md:items-start">
+                        <div className="min-w-0 flex-1 space-y-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <ShoppingCart className="h-5 w-5 shrink-0 text-green-600" />
+                            <span className="font-semibold text-lg">Venta</span>
+                            <span className="text-sm text-muted-foreground">
+                              ({format(new Date(movement.movementDate), "PPP 'a las' HH:mm", { locale: es })})
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-1 gap-x-4 gap-y-1 text-base sm:grid-cols-2">
+                            <p><span className="font-medium">No. Movimiento:</span> {movement.movementNumber}</p>
+                            <p><span className="font-medium">Producto:</span> {movement.product?.name}</p>
+                            <p><span className="font-medium">Bodega:</span> {movement.warehouse?.name}</p>
+                            <p><span className="font-medium">Cantidad:</span> {movement.quantity} unidades</p>
+                            <p><span className="font-medium">Precio Unitario:</span> ${(Number(movement.unitPrice) || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</p>
+                            <p><span className="font-medium">Total:</span> ${(Number(movement.totalAmount) || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</p>
+                            {movement.profit !== null && (
+                              <p><span className="font-medium">Ganancia:</span> ${(Number(movement.profit) || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</p>
+                            )}
+                            <p><span className="font-medium">Pago:</span> {
+                              movement.paymentType === "cash" ? "Contado" :
+                              movement.paymentType === "credit" ? "Crédito" :
+                              "Mixto"
+                            }</p>
+                            {movement.creditDays && (
+                              <p><span className="font-medium">Plazo:</span> {movement.creditDays} días</p>
+                            )}
+                            {movement.paymentType === "mixed" && (
+                              <>
+                                <p><span className="font-medium">Contado:</span> ${(Number(movement.cashAmount) || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</p>
+                                <p><span className="font-medium">Crédito:</span> ${(Number(movement.creditAmount) || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</p>
+                              </>
+                            )}
+                            {movement.hasShipping && movement.shippingCost && (
+                              <p><span className="font-medium">Envío:</span> ${(Number(movement.shippingCost) || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                                ({movement.shippingPaidBy === "customer" ? "Cliente" : "Vendedor"})
+                              </p>
+                            )}
+                            {movement.notes && (
+                              <p className="sm:col-span-2"><span className="font-medium">Notas:</span> {movement.notes}</p>
+                            )}
+                          </div>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEditMovement(movement)}
-                        >
-                          <Edit className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                      </div>
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-base">
-                        <p><span className="font-medium">No. Movimiento:</span> {movement.movementNumber}</p>
-                        <p><span className="font-medium">Producto:</span> {movement.product?.name}</p>
-                        <p><span className="font-medium">Bodega:</span> {movement.warehouse?.name}</p>
-                        <p><span className="font-medium">Cantidad:</span> {movement.quantity} unidades</p>
-                        <p><span className="font-medium">Precio Unitario:</span> ${(Number(movement.unitPrice) || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</p>
-                        <p><span className="font-medium">Total:</span> ${(Number(movement.totalAmount) || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</p>
-                        {movement.profit !== null && (
-                          <p><span className="font-medium">Ganancia:</span> ${(Number(movement.profit) || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</p>
-                        )}
-                        <p><span className="font-medium">Pago:</span> {
-                          movement.paymentType === "cash" ? "Contado" :
-                          movement.paymentType === "credit" ? "Crédito" :
-                          "Mixto"
-                        }</p>
-                        {movement.creditDays && (
-                          <p><span className="font-medium">Plazo:</span> {movement.creditDays} días</p>
-                        )}
-                        {movement.paymentType === "mixed" && (
-                          <>
-                            <p><span className="font-medium">Contado:</span> ${(Number(movement.cashAmount) || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</p>
-                            <p><span className="font-medium">Crédito:</span> ${(Number(movement.creditAmount) || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</p>
-                          </>
-                        )}
-                        {movement.hasShipping && movement.shippingCost && (
-                          <p><span className="font-medium">Envío:</span> ${(Number(movement.shippingCost) || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")} 
-                            ({movement.shippingPaidBy === "customer" ? "Cliente" : "Vendedor"})
-                          </p>
-                        )}
-                        {movement.notes && (
-                          <p className="col-span-2"><span className="font-medium">Notas:</span> {movement.notes}</p>
-                        )}
+                        <div className="flex shrink-0 flex-col gap-2 md:min-w-[200px]">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            onClick={() => handleEditMovement(movement)}
+                          >
+                            <Edit className="mr-2 h-4 w-4" />
+                            Editar
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            onClick={() => handleViewPDF(movement.id)}
+                          >
+                            <FileText className="mr-2 h-4 w-4" />
+                            Ver PDF
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="w-full border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                            onClick={() => handleViewShippingLabel(movement.id)}
+                          >
+                            <Package className="mr-2 h-4 w-4" />
+                            Ver Guía de Envío
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>

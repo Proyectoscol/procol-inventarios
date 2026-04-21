@@ -16,6 +16,17 @@ import { cn } from "@/lib/utils"
 import { useCompany } from "@/contexts/CompanyContext"
 import { DateRangeSelector } from "@/components/shared/DateRangeSelector"
 
+/** Mismo rango que el preset "Este mes" en DateRangeSelector */
+function thisMonthRange(): { from: Date; to: Date } {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const from = new Date(today.getFullYear(), today.getMonth(), 1)
+  from.setHours(0, 0, 0, 0)
+  const to = new Date()
+  to.setHours(23, 59, 59, 999)
+  return { from, to }
+}
+
 export default function StatsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -28,15 +39,7 @@ export default function StatsPage() {
   const [selectedProduct, setSelectedProduct] = useState<{ id: string; name: string } | null>(null)
   const [isLoadingStats, setIsLoadingStats] = useState(false)
   
-  // Estado para el rango de fechas - Por defecto: todo el historial
-  const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>(() => {
-    const to = new Date()
-    to.setHours(23, 59, 59, 999)
-    // Fecha de inicio: 1 de enero de 2000 (fecha muy antigua para incluir todo el historial)
-    const from = new Date(2000, 0, 1)
-    from.setHours(0, 0, 0, 0)
-    return { from, to }
-  })
+  const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>(() => thisMonthRange())
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -85,11 +88,7 @@ export default function StatsPage() {
   }
 
   const resetFilters = () => {
-    // Restablecer rango de fechas a todo el historial
-    const to = new Date()
-    to.setHours(23, 59, 59, 999)
-    const from = new Date(2000, 0, 1)
-    from.setHours(0, 0, 0, 0)
+    const { from, to } = thisMonthRange()
     setDateRange({ from, to })
     
     // Seleccionar todas las bodegas

@@ -651,9 +651,9 @@ export function SaleForm({ companyId, warehouses, customers: initialCustomers = 
 
     {/* Modales */}
     {showCreateCustomer && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader>
+      <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4">
+        <Card className="my-auto flex w-full max-w-md max-h-[min(90dvh,calc(100dvh-2rem))] flex-col shadow-lg">
+          <CardHeader className="shrink-0">
             <div className="flex justify-between items-center">
               <CardTitle>Crear Nuevo Cliente</CardTitle>
               <Button
@@ -665,7 +665,7 @@ export function SaleForm({ companyId, warehouses, customers: initialCustomers = 
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
             <CustomerForm
               companyId={companyId}
               onSuccess={(newCustomer) => {
