@@ -81,7 +81,9 @@ export default function DashboardPage() {
   const hasCompanies = companies.length > 0
   const hasWarehouses = warehouses.length > 0
   const canUseSystem = hasCompanies && hasWarehouses
-  const isStoreManager = (session?.user as any)?.userType === "STORE_MANAGER"
+  const userType = (session?.user as any)?.userType
+  const isStoreManager = userType === "STORE_MANAGER"
+  const isVendedor = userType === "VENDEDOR"
 
   return (
     <div className="p-8">
@@ -181,8 +183,8 @@ export default function DashboardPage() {
         {/* Secciones rápidas - Solo se muestran si hay compañías y bodegas */}
         {canUseSystem && (
           <>
-            {/* Acciones Rápidas - Solo para MASTER */}
-            {!isStoreManager && (
+            {/* Acciones Rápidas - Para MASTER y VENDEDOR */}
+            {(!isStoreManager) && (
               <div className="mb-8">
                 <h2 className="text-2xl font-semibold mb-4">Acciones Rápidas</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -227,7 +229,7 @@ export default function DashboardPage() {
 
             {/* Inventario, Clientes, Reportes y Movimientos */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Inventario - Blur para STORE_MANAGER */}
+              {/* Inventario - Blur para STORE_MANAGER, accesible para MASTER y VENDEDOR */}
               {isStoreManager ? (
                 <Card className="relative h-full opacity-60 cursor-not-allowed">
                   <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
@@ -262,7 +264,7 @@ export default function DashboardPage() {
                         <div>
                           <CardTitle>Inventario</CardTitle>
                           <CardDescription>
-                            Gestiona tus productos y stock
+                            {isVendedor ? "Consulta y edita productos" : "Gestiona tus productos y stock"}
                           </CardDescription>
                         </div>
                       </div>
@@ -290,8 +292,8 @@ export default function DashboardPage() {
                 </Card>
               </Link>
 
-              {/* Reportes - Blur para STORE_MANAGER */}
-              {isStoreManager ? (
+              {/* Reportes - Blur para STORE_MANAGER y VENDEDOR */}
+              {(isStoreManager || isVendedor) ? (
                 <Card className="relative h-full opacity-60 cursor-not-allowed">
                   <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
                     <div className="text-center p-4">
@@ -334,7 +336,7 @@ export default function DashboardPage() {
                 </Link>
               )}
 
-              {/* Movimientos - Blur para STORE_MANAGER */}
+              {/* Movimientos - Blur para STORE_MANAGER, accesible para VENDEDOR */}
               {isStoreManager ? (
                 <Card className="relative h-full opacity-60 cursor-not-allowed">
                   <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">

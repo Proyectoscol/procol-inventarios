@@ -13,7 +13,7 @@ import { BackButton } from "@/components/shared/BackButton"
 import { EditProductModal } from "@/components/modals/EditProductModal"
 import { EditThresholdModal } from "@/components/modals/EditThresholdModal"
 import { ConfirmDialog } from "@/components/modals/ConfirmDialog"
-import { Edit, Package, Calendar, DollarSign, ShoppingCart, Trash2 } from "lucide-react"
+import { Edit, Package, Calendar, DollarSign, ShoppingCart, Trash2, FileDown } from "lucide-react"
 import { toast } from "sonner"
 import { useCompany } from "@/contexts/CompanyContext"
 
@@ -28,6 +28,8 @@ function InventoryPageContent() {
   const [search, setSearch] = useState("")
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("")
   const [sortBy, setSortBy] = useState<"name" | "name-desc" | "stock-high" | "stock-low" | "last-purchase" | "last-sale">("name")
+  const [isDownloadingPDF, setIsDownloadingPDF] = useState(false)
+  const isVendedor = (session?.user as any)?.userType === "VENDEDOR"
   const [showAddProduct, setShowAddProduct] = useState(false)
   const [productDetails, setProductDetails] = useState<Record<string, any>>({})
   const [editingProduct, setEditingProduct] = useState<any>(null)
@@ -191,9 +193,14 @@ function InventoryPageContent() {
 
   const fetchWarehouses = async (compId: string) => {
     try {
-      const res = await fetch(`/api/companies/${compId}/warehouses`)
+      // VENDEDOR only sees their assigned warehouses
+      const url = isVendedor
+        ? `/api/user/warehouses`
+        : `/api/companies/${compId}/warehouses`
+      const res = await fetch(url)
       if (res.ok) {
-        const data = await res.json()
+        const rawData = await res.json()
+        const data = isVendedor ? (rawData.warehouses || []) : rawData
         
         // Obtener información de stock para cada bodega y ordenar
         const warehousesWithStock = await Promise.all(
@@ -240,6 +247,36 @@ function InventoryPageContent() {
       }
     } catch (error) {
       console.error("Error cargando bodegas:", error)
+    }
+  }
+
+  const handleDownloadInventoryPDF = async () => {
+    if (!selectedWarehouseId) {
+      toast.error("Selecciona una bodega primero")
+      return
+    }
+    setIsDownloadingPDF(true)
+    try {
+      const res = await fetch(`/api/inventory/pdf?warehouseId=${selectedWarehouseId}`)
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || "Error generando PDF")
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      const warehouseName = warehouses.find(w => w.id === selectedWarehouseId)?.name || "inventario"
+      a.href = url
+      a.download = `inventario-${warehouseName.replace(/\s+/g, "-").toLowerCase()}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast.success("PDF descargado exitosamente")
+    } catch (error: any) {
+      toast.error(error.message || "Error al descargar el PDF")
+    } finally {
+      setIsDownloadingPDF(false)
     }
   }
 
@@ -366,7 +403,19 @@ function InventoryPageContent() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Inventario</h1>
         {selectedCompanyId && !showAddProduct && (
-          <Button onClick={() => setShowAddProduct(true)}>+ Agregar Producto</Button>
+          <div className="flex gap-2">
+            {selectedWarehouseId && (
+              <Button
+                variant="outline"
+                onClick={handleDownloadInventoryPDF}
+                disabled={isDownloadingPDF}
+              >
+                <FileDown className="h-4 w-4 mr-2" />
+                {isDownloadingPDF ? "Generando..." : "Descargar PDF"}
+              </Button>
+            )}
+            <Button onClick={() => setShowAddProduct(true)}>+ Agregar Producto</Button>
+          </div>
         )}
       </div>
 

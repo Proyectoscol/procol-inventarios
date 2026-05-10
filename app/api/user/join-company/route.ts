@@ -5,8 +5,10 @@ import { authOptions } from "@/lib/auth"
 import { z } from "zod"
 
 const joinCompanySchema = z.object({
-  userType: z.enum(["MASTER", "STORE_MANAGER"]),
-  companyId: z.string().min(1)
+  userType: z.enum(["MASTER", "STORE_MANAGER", "VENDEDOR"]),
+  companyId: z.string().min(1),
+  // For VENDEDOR only: warehouseIds must be provided
+  warehouseIds: z.array(z.string().min(1)).optional()
 })
 
 export async function POST(req: NextRequest) {
@@ -48,6 +50,31 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Validar VENDEDOR-specific requirements
+    if (validated.userType === "VENDEDOR") {
+      if (!validated.warehouseIds || validated.warehouseIds.length === 0) {
+        return NextResponse.json(
+          { error: "VENDEDOR debe asignarse a al menos una bodega" },
+          { status: 400 }
+        )
+      }
+
+      // Verificar que todas las bodegas pertenecen a la compañía
+      const warehouses = await prisma.warehouse.findMany({
+        where: {
+          id: { in: validated.warehouseIds },
+          companyId: validated.companyId
+        }
+      })
+
+      if (warehouses.length !== validated.warehouseIds.length) {
+        return NextResponse.json(
+          { error: "Una o más bodegas no pertenecen a esta compañía" },
+          { status: 400 }
+        )
+      }
+    }
+
     // Verificar que el usuario no esté ya asociado a esta compañía
     const existingRelation = await prisma.userCompany.findUnique({
       where: {
@@ -66,7 +93,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Actualizar el tipo de usuario (solo si no lo tiene) y crear la relación con la compañía
-    await prisma.$transaction(async (tx) => {
+    const assignedWarehouseIds = await prisma.$transaction(async (tx) => {
       if (shouldUpdateUserType) {
         await tx.user.update({
           where: { id: session.user.id },
@@ -74,17 +101,39 @@ export async function POST(req: NextRequest) {
         })
       }
 
+      // Determine role based on userType
+      const role = validated.userType === "VENDEDOR" ? "employee" : "manager"
+
       await tx.userCompany.create({
         data: {
           userId: session.user.id,
           companyId: validated.companyId,
-          role: "manager",
+          role: role,
           isOwner: false
         }
       })
+
+      // For VENDEDOR, create warehouse assignments
+      if (validated.userType === "VENDEDOR" && validated.warehouseIds) {
+        const warehouseAssignments = await tx.warehouseAssignment.createMany({
+          data: validated.warehouseIds.map(warehouseId => ({
+            userId: session.user.id,
+            warehouseId: warehouseId
+          })),
+          skipDuplicates: true // Avoid errors if already assigned
+        })
+        return validated.warehouseIds
+      }
+
+      return undefined
     })
 
-    return NextResponse.json({ success: true, companyId: validated.companyId })
+    return NextResponse.json({ 
+      success: true, 
+      companyId: validated.companyId,
+      userType: validated.userType,
+      warehouseIds: assignedWarehouseIds
+    })
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

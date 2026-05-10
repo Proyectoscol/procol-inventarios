@@ -13,6 +13,7 @@ datasource db {
 enum UserType {
   MASTER        // Acceso completo a todo
   STORE_MANAGER // Solo gestión de clientes
+  VENDEDOR      // Vendedor: ventas y compras en bodegas asignadas
 }
 
 model User {
@@ -24,7 +25,8 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  companies UserCompany[]
+  companies              UserCompany[]
+  warehouseAssignments   WarehouseAssignment[]
 
   @@map("users")
 }
@@ -109,11 +111,27 @@ model Warehouse {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  stock     Stock[]
-  movements Movement[]
+  company              Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  stock                Stock[]
+  movements            Movement[]
+  userAssignments      WarehouseAssignment[]
 
   @@map("warehouses")
+}
+
+// ============= ASIGNACIÓN DE BODEGAS A VENDEDORES =============
+model WarehouseAssignment {
+  id          String   @id @default(cuid())
+  userId      String
+  warehouseId String
+  createdAt   DateTime @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, warehouseId])
+  @@index([userId])
+  @@map("warehouse_assignments")
 }
 
 // ============= PRODUCTOS =============

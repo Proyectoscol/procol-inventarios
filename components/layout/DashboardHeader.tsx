@@ -34,11 +34,21 @@ export function DashboardHeader() {
     { name: "Configuración", href: "/dashboard/settings", icon: Settings },
   ]
 
+  const userType = (session?.user as any)?.userType
+
   // Filtrar navegación según tipo de usuario
-  const navigation = (session?.user as any)?.userType === "STORE_MANAGER"
+  const navigation = userType === "STORE_MANAGER"
     ? allNavigation.filter(item => 
         item.href === "/dashboard" || 
         item.href === "/dashboard/customers" ||
+        item.href === "/dashboard/settings"
+      )
+    : userType === "VENDEDOR"
+    ? allNavigation.filter(item =>
+        item.href === "/dashboard" ||
+        item.href === "/dashboard/customers" ||
+        item.href === "/dashboard/inventory" ||
+        item.href === "/dashboard/movements" ||
         item.href === "/dashboard/settings"
       )
     : allNavigation

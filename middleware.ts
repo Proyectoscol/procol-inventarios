@@ -35,6 +35,29 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL("/dashboard/customers", request.url))
       }
     }
+
+    // Si es VENDEDOR, restringir acceso a ciertas rutas
+    if (token.userType === "VENDEDOR") {
+      // Rutas permitidas para VENDEDOR
+      const allowedPaths = [
+        "/dashboard",
+        "/dashboard/customers",
+        "/dashboard/inventory",
+        "/dashboard/movements",
+        "/dashboard/settings", // Solo para cerrar sesión
+      ]
+
+      // Si intenta acceder a subrutas de settings (excepto la página principal), bloquear
+      if (path.startsWith("/dashboard/settings/") && path !== "/dashboard/settings") {
+        return NextResponse.redirect(new URL("/dashboard/customers", request.url))
+      }
+
+      const isAllowed = allowedPaths.some(p => path === p || path.startsWith(p + "/"))
+
+      if (!isAllowed) {
+        return NextResponse.redirect(new URL("/dashboard/customers", request.url))
+      }
+    }
   }
 
   // Si el usuario está autenticado pero no tiene userType, redirigir al onboarding

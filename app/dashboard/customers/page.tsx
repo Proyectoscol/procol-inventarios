@@ -21,7 +21,9 @@ export default function CustomersPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const { selectedCompanyId } = useCompany()
-  const isStoreManager = (session?.user as any)?.userType === "STORE_MANAGER"
+  const userType = (session?.user as any)?.userType
+  const isStoreManager = userType === "STORE_MANAGER"
+  const isVendedor = userType === "VENDEDOR"
   const [customers, setCustomers] = useState<any[]>([])
   const [filteredCustomers, setFilteredCustomers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -424,6 +426,7 @@ export default function CustomersPage() {
             customer={selectedCustomer}
             companyId={selectedCompanyId}
             isStoreManager={isStoreManager}
+            isVendedor={isVendedor}
             onClose={() => setSelectedCustomer(null)}
             onCustomerUpdated={(updatedCustomer) => {
               // Actualizar el cliente en la lista

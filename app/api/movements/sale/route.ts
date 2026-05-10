@@ -31,6 +31,29 @@ export async function POST(req: NextRequest) {
 
     const data = await req.json()
     
+    // 0. Validar acceso a bodega para VENDEDOR
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { userType: true }
+    })
+
+    if (user?.userType === "VENDEDOR") {
+      // Verificar que el VENDEDOR tiene acceso a esta bodega
+      const hasAccess = await prisma.warehouseAssignment.findFirst({
+        where: {
+          userId: session.user.id,
+          warehouseId: data.warehouseId
+        }
+      })
+
+      if (!hasAccess) {
+        return NextResponse.json(
+          { error: "No tienes acceso a esta bodega" },
+          { status: 403 }
+        )
+      }
+    }
+    
     // 1. Validar stock disponible
     const stock = await prisma.stock.findUnique({
       where: {

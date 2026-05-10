@@ -6,18 +6,21 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Building2, Users, ArrowRight, AlertTriangle } from "lucide-react"
+import { Building2, Users, ArrowRight, AlertTriangle, ShoppingCart, Warehouse, CheckSquare, Square } from "lucide-react"
 import { toast } from "sonner"
 
 export default function OnboardingPage() {
   const sessionData = useSession()
   const { data: session, status, update } = sessionData || {}
   const router = useRouter()
-  const [step, setStep] = useState<'choose' | 'master' | 'store_manager'>('choose')
+  const [step, setStep] = useState<'choose' | 'master' | 'store_manager' | 'vendedor' | 'warehouse_selection'>('choose')
   const [companyId, setCompanyId] = useState("")
   const [companyInfo, setCompanyInfo] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [availableWarehouses, setAvailableWarehouses] = useState<Array<{ id: string; name: string; description?: string }>>([])
+  const [selectedWarehouseIds, setSelectedWarehouseIds] = useState<Set<string>>(new Set())
+  const [loadingWarehouses, setLoadingWarehouses] = useState(false)
 
   // Redirigir al login si no está autenticado
   useEffect(() => {
@@ -56,7 +59,6 @@ export default function OnboardingPage() {
       }
 
       toast.success("Tipo de usuario configurado correctamente")
-      // Redirigir al dashboard para continuar con el flujo normal
       router.push("/dashboard")
     } catch (err: any) {
       toast.error(err.message || "Error al configurar tipo de usuario")
@@ -65,7 +67,7 @@ export default function OnboardingPage() {
     }
   }
 
-  const handleVerifyCompany = async () => {
+  const handleVerifyCompany = async (userType: "STORE_MANAGER" | "VENDEDOR" = "STORE_MANAGER") => {
     if (!companyId.trim()) {
       setError("Por favor ingresa un ID de compañía")
       return
@@ -80,6 +82,11 @@ export default function OnboardingPage() {
       if (res.ok) {
         setCompanyInfo(data)
         toast.success("Compañía encontrada")
+
+        // For VENDEDOR, also fetch available warehouses
+        if (userType === "VENDEDOR") {
+          await fetchWarehousesForCompany(data.id)
+        }
       } else {
         setError(data.error || "No se encontró ninguna compañía con ese ID")
       }
@@ -87,6 +94,23 @@ export default function OnboardingPage() {
       setError("Error al verificar la compañía")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchWarehousesForCompany = async (compId: string) => {
+    setLoadingWarehouses(true)
+    try {
+      const res = await fetch(`/api/companies/${compId}/warehouses`)
+      if (res.ok) {
+        const data = await res.json()
+        setAvailableWarehouses(data)
+      } else {
+        toast.error("Error al cargar bodegas de la compañía")
+      }
+    } catch (err) {
+      toast.error("Error al cargar bodegas")
+    } finally {
+      setLoadingWarehouses(false)
     }
   }
 
@@ -114,21 +138,81 @@ export default function OnboardingPage() {
 
       toast.success("Te has unido a la compañía exitosamente")
       
-      // Forzar actualización de sesión
       if (update) {
-        await update() // Dispara trigger "update" en el callback de JWT
+        await update()
       }
       
-      // Esperar un momento y luego redirigir
       await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // Redirigir al dashboard
       window.location.href = "/dashboard/customers"
     } catch (err: any) {
       toast.error(err.message || "Error al unirse a la compañía")
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleJoinCompanyAsVendedor = async () => {
+    if (!companyId.trim()) {
+      setError("Por favor ingresa un ID de compañía")
+      return
+    }
+
+    if (selectedWarehouseIds.size === 0) {
+      toast.error("Debes seleccionar al menos una bodega")
+      return
+    }
+
+    setLoading(true)
+    try {
+      const res = await fetch("/api/user/join-company", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          userType: "VENDEDOR",
+          companyId: companyId.trim(),
+          warehouseIds: Array.from(selectedWarehouseIds)
+        })
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || "Error al unirse a la compañía")
+      }
+
+      toast.success("Te has unido como Vendedor exitosamente")
+      
+      if (update) {
+        await update()
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      window.location.href = "/dashboard/customers"
+    } catch (err: any) {
+      toast.error(err.message || "Error al unirse a la compañía como Vendedor")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const toggleWarehouse = (warehouseId: string) => {
+    setSelectedWarehouseIds(prev => {
+      const next = new Set(prev)
+      if (next.has(warehouseId)) {
+        next.delete(warehouseId)
+      } else {
+        next.add(warehouseId)
+      }
+      return next
+    })
+  }
+
+  const resetVendedorFlow = () => {
+    setStep('choose')
+    setCompanyId("")
+    setCompanyInfo(null)
+    setError("")
+    setAvailableWarehouses([])
+    setSelectedWarehouseIds(new Set())
   }
 
   return (
@@ -192,6 +276,27 @@ export default function OnboardingPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Opción 3: Vendedor */}
+              <div 
+                className="p-6 border-2 rounded-lg cursor-pointer hover:border-primary transition-colors"
+                onClick={() => setStep('vendedor')}
+              >
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-purple-100 rounded-lg">
+                    <ShoppingCart className="h-8 w-8 text-purple-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg">Vender en Compañía Existente</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Únete a una compañía existente para registrar ventas y compras en bodegas asignadas.
+                    </p>
+                    <p className="text-xs text-purple-600 mt-2">
+                      → Vendedor (Ventas & Compras)
+                    </p>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </>
         )}
@@ -239,12 +344,127 @@ export default function OnboardingPage() {
                   Volver
                 </Button>
                 {!companyInfo ? (
-                  <Button onClick={handleVerifyCompany} disabled={!companyId.trim() || loading}>
+                  <Button onClick={() => handleVerifyCompany("STORE_MANAGER")} disabled={!companyId.trim() || loading}>
                     {loading ? "Verificando..." : "Verificar"}
                   </Button>
                 ) : (
                   <Button onClick={handleJoinCompany} disabled={loading}>
                     {loading ? "Uniéndose..." : "Unirse a esta Compañía"}
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </>
+        )}
+
+        {step === 'vendedor' && (
+          <>
+            <CardHeader>
+              <CardTitle>Unirse como Vendedor</CardTitle>
+              <CardDescription>
+                Ingresa el ID de la compañía donde vas a vender
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Input
+                  placeholder="Pega el ID de la compañía aquí"
+                  value={companyId}
+                  onChange={(e) => {
+                    setCompanyId(e.target.value)
+                    setError("")
+                    setCompanyInfo(null)
+                    setAvailableWarehouses([])
+                    setSelectedWarehouseIds(new Set())
+                  }}
+                  disabled={loading}
+                />
+                {error && (
+                  <p className="text-sm text-red-500 mt-2">{error}</p>
+                )}
+              </div>
+
+              {companyInfo && (
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm text-green-800">
+                    ✓ Compañía encontrada: <strong>{companyInfo.name}</strong>
+                  </p>
+                </div>
+              )}
+
+              {companyInfo && availableWarehouses.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Warehouse className="h-4 w-4 text-purple-600" />
+                    <p className="text-sm font-semibold">Selecciona tus bodegas asignadas:</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Debes seleccionar al menos una bodega. Solo tendrás acceso a las bodegas que selecciones.
+                  </p>
+                  <div className="space-y-2">
+                    {availableWarehouses.map((warehouse) => {
+                      const isSelected = selectedWarehouseIds.has(warehouse.id)
+                      return (
+                        <div
+                          key={warehouse.id}
+                          className={`flex items-center gap-3 p-3 border-2 rounded-lg cursor-pointer transition-colors ${
+                            isSelected 
+                              ? "border-purple-500 bg-purple-50" 
+                              : "border-gray-200 hover:border-purple-300"
+                          }`}
+                          onClick={() => toggleWarehouse(warehouse.id)}
+                        >
+                          {isSelected ? (
+                            <CheckSquare className="h-5 w-5 text-purple-600 flex-shrink-0" />
+                          ) : (
+                            <Square className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                          )}
+                          <div>
+                            <p className="font-medium text-sm">{warehouse.name}</p>
+                            {warehouse.description && (
+                              <p className="text-xs text-muted-foreground">{warehouse.description}</p>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  {selectedWarehouseIds.size > 0 && (
+                    <p className="text-xs text-purple-700 font-medium">
+                      ✓ {selectedWarehouseIds.size} bodega{selectedWarehouseIds.size > 1 ? "s" : ""} seleccionada{selectedWarehouseIds.size > 1 ? "s" : ""}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {companyInfo && loadingWarehouses && (
+                <p className="text-sm text-muted-foreground">Cargando bodegas disponibles...</p>
+              )}
+
+              {companyInfo && !loadingWarehouses && availableWarehouses.length === 0 && (
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-800">
+                    Esta compañía no tiene bodegas disponibles. Contacta al administrador.
+                  </p>
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={resetVendedorFlow} disabled={loading}>
+                  Volver
+                </Button>
+                {!companyInfo ? (
+                  <Button onClick={() => handleVerifyCompany("VENDEDOR")} disabled={!companyId.trim() || loading}>
+                    {loading ? "Verificando..." : "Verificar"}
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={handleJoinCompanyAsVendedor} 
+                    disabled={loading || selectedWarehouseIds.size === 0 || availableWarehouses.length === 0}
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    {loading ? "Uniéndose..." : "Unirse como Vendedor"}
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 )}

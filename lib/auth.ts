@@ -62,13 +62,22 @@ export const authOptions: NextAuthOptions = {
           try {
             const dbUser = await prisma.user.findUnique({
               where: { id: token.id as string },
-              select: { userType: true }
+              select: { 
+                userType: true,
+                warehouseAssignments: {
+                  select: { warehouseId: true }
+                }
+              }
             })
             if (dbUser) {
               token.userType = dbUser.userType
+              // For VENDEDOR users, include assigned warehouse IDs in JWT
+              if (dbUser.userType === "VENDEDOR" && dbUser.warehouseAssignments) {
+                token.warehouseIds = dbUser.warehouseAssignments.map(wa => wa.warehouseId)
+              }
             }
           } catch (error) {
-            console.error("Error obteniendo userType:", error)
+            console.error("Error obteniendo userType y warehouses:", error)
           }
         }
       }
@@ -79,6 +88,10 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.id = token.id as string
         session.user.userType = token.userType as string | null
+        // Include warehouse IDs in session for VENDEDOR users
+        if (token.warehouseIds) {
+          session.user.warehouseIds = token.warehouseIds as string[]
+        }
       }
       return session
     },

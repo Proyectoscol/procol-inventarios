@@ -46,6 +46,7 @@ export default function MovementsPage() {
   const [isLoadingMovements, setIsLoadingMovements] = useState(false)
   const [movementToDelete, setMovementToDelete] = useState<any | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const isVendedor = (session?.user as any)?.userType === "VENDEDOR"
   
   // Estado para el rango de fechas - Por defecto: todo el historial
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>(() => {
@@ -86,10 +87,14 @@ export default function MovementsPage() {
 
   const fetchWarehouses = async (companyId: string) => {
     try {
-      const res = await fetch(`/api/companies/${companyId}/warehouses`)
+      // VENDEDOR only sees their assigned warehouses
+      const url = isVendedor 
+        ? `/api/user/warehouses`
+        : `/api/companies/${companyId}/warehouses`
+      const res = await fetch(url)
       if (res.ok) {
         const data = await res.json()
-        setWarehouses(data)
+        setWarehouses(isVendedor ? (data.warehouses || []) : data)
       }
     } catch (error) {
       console.error("Error cargando bodegas:", error)
@@ -467,7 +472,7 @@ export default function MovementsPage() {
                                 <span className="font-medium text-muted-foreground">Total:</span>
                                 <p className="font-semibold text-lg">{formatCurrency(Number(movement.totalAmount))}</p>
                               </div>
-                              {isSale && movement.profit !== null && (
+                              {isSale && movement.profit !== null && !isVendedor && (
                                 <div>
                                   <span className="font-medium text-muted-foreground flex items-center gap-1">
                                     <TrendingUp className="h-3 w-3" /> Ganancia:
@@ -490,44 +495,79 @@ export default function MovementsPage() {
 
                           {/* Botones de acción */}
                           <div className="flex flex-col gap-2 md:min-w-[200px]">
-                            <Button
-                              onClick={() => setSelectedMovement(movement)}
-                              variant="outline"
-                              size="sm"
-                              className="w-full"
-                            >
-                              <Edit className="h-4 w-4 mr-2" />
-                              Editar
-                            </Button>
-                            <Button
-                              onClick={() => setMovementToDelete(movement)}
-                              variant="outline"
-                              size="sm"
-                              className="w-full border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Eliminar
-                            </Button>
-                            {isSale && (
+                            {isVendedor ? (
+                              /* VENDEDOR: Solo puede ver PDF y guía, no editar ni eliminar */
+                              <>
+                                <div className="flex items-center gap-1 px-2 py-1 bg-gray-50 border border-gray-200 rounded text-xs text-gray-500">
+                                  <span>Solo lectura</span>
+                                  <span className="ml-auto cursor-help" title="Contacta al administrador para modificar o eliminar movimientos">ⓘ</span>
+                                </div>
+                                {isSale && (
+                                  <>
+                                    <Button
+                                      onClick={() => handleViewPDF(movement.id)}
+                                      variant="outline"
+                                      size="sm"
+                                      className="w-full"
+                                    >
+                                      <FileText className="h-4 w-4 mr-2" />
+                                      Ver PDF
+                                    </Button>
+                                    <Button
+                                      onClick={() => handleViewShippingLabel(movement.id)}
+                                      variant="outline"
+                                      size="sm"
+                                      className="w-full bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-700"
+                                    >
+                                      <Package className="h-4 w-4 mr-2" />
+                                      Ver Guía de Envío
+                                    </Button>
+                                  </>
+                                )}
+                              </>
+                            ) : (
+                              /* MASTER / otros: Pueden editar y eliminar */
                               <>
                                 <Button
-                                  onClick={() => handleViewPDF(movement.id)}
+                                  onClick={() => setSelectedMovement(movement)}
                                   variant="outline"
                                   size="sm"
                                   className="w-full"
                                 >
-                                  <FileText className="h-4 w-4 mr-2" />
-                                  Ver PDF
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Editar
                                 </Button>
                                 <Button
-                                  onClick={() => handleViewShippingLabel(movement.id)}
+                                  onClick={() => setMovementToDelete(movement)}
                                   variant="outline"
                                   size="sm"
-                                  className="w-full bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-700"
+                                  className="w-full border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
                                 >
-                                  <Package className="h-4 w-4 mr-2" />
-                                  Ver Guía de Envío
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Eliminar
                                 </Button>
+                                {isSale && (
+                                  <>
+                                    <Button
+                                      onClick={() => handleViewPDF(movement.id)}
+                                      variant="outline"
+                                      size="sm"
+                                      className="w-full"
+                                    >
+                                      <FileText className="h-4 w-4 mr-2" />
+                                      Ver PDF
+                                    </Button>
+                                    <Button
+                                      onClick={() => handleViewShippingLabel(movement.id)}
+                                      variant="outline"
+                                      size="sm"
+                                      className="w-full bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-700"
+                                    >
+                                      <Package className="h-4 w-4 mr-2" />
+                                      Ver Guía de Envío
+                                    </Button>
+                                  </>
+                                )}
                               </>
                             )}
                           </div>

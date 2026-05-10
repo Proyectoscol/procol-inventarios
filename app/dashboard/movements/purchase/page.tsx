@@ -19,6 +19,7 @@ export default function PurchasePage() {
   const [warehouses, setWarehouses] = useState<any[]>([])
   const [preselectedProductId, setPreselectedProductId] = useState<string>("")
   const [preselectedWarehouseId, setPreselectedWarehouseId] = useState<string>("")
+  const isVendedor = (session?.user as any)?.userType === "VENDEDOR"
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -45,10 +46,14 @@ export default function PurchasePage() {
 
   const fetchWarehouses = async (compId: string) => {
     try {
-      const res = await fetch(`/api/companies/${compId}/warehouses`)
+      // VENDEDOR only sees their assigned warehouses
+      const url = isVendedor
+        ? `/api/user/warehouses`
+        : `/api/companies/${compId}/warehouses`
+      const res = await fetch(url)
       if (res.ok) {
         const data = await res.json()
-        setWarehouses(data)
+        setWarehouses(isVendedor ? (data.warehouses || []) : data)
       }
     } catch (error) {
       console.error("Error cargando bodegas:", error)

@@ -7,6 +7,7 @@ declare module "next-auth" {
       email: string
       name: string
       userType?: string | null
+      warehouseIds?: string[] // For VENDEDOR: list of assigned warehouse IDs
     }
   }
 
@@ -22,6 +23,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     id: string
     userType?: string | null
+    warehouseIds?: string[] // For VENDEDOR: list of assigned warehouse IDs
   }
 }
 

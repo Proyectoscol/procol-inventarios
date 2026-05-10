@@ -74,6 +74,28 @@ export async function PUT(
       return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 })
     }
 
+    // Get user type to check VENDEDOR restrictions
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { userType: true }
+    })
+
+    // VENDEDOR users can ONLY edit metadata: name, description, image, minStockThreshold
+    // They CANNOT edit stock quantities
+    if (user?.userType === "VENDEDOR") {
+      // Check if request tries to modify stock quantities
+      // We reject any update that includes fields we don't want to allow
+      const forbiddenFields = ["unitPrice", "totalPrice", "cost", "quantity", "stock"]
+      for (const field of forbiddenFields) {
+        if (data[field] !== undefined) {
+          return NextResponse.json(
+            { error: `VENDEDOR no puede editar el campo ${field}. Solo puede editar nombre, descripción, imagen y umbral mínimo.` },
+            { status: 403 }
+          )
+        }
+      }
+    }
+
     // Preparar datos de actualización
     const updateData: any = {}
 

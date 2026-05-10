@@ -31,7 +31,13 @@ export async function GET(
       }
     }
 
-    const products = await prisma.product.findMany({
+    // Get user type to apply warehouse filtering for VENDEDOR
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { userType: true }
+    })
+
+    let products = await prisma.product.findMany({
       where,
       include: {
         stock: {
@@ -44,6 +50,27 @@ export async function GET(
         name: "asc"
       }
     })
+
+    // For VENDEDOR, filter products to only those in their assigned warehouses
+    if (user?.userType === "VENDEDOR") {
+      // Get assigned warehouses for this VENDEDOR
+      const assignedWarehouses = await prisma.warehouseAssignment.findMany({
+        where: { userId: session.user.id },
+        select: { warehouseId: true }
+      })
+
+      const assignedWarehouseIds = assignedWarehouses.map(wa => wa.warehouseId)
+
+      if (assignedWarehouseIds.length === 0) {
+        return NextResponse.json([])
+      }
+
+      // Filter products to only show stock in assigned warehouses
+      // A product is included if it has stock in at least one assigned warehouse
+      products = products.filter(product => {
+        return product.stock.some(s => assignedWarehouseIds.includes(s.warehouseId))
+      })
+    }
 
     return NextResponse.json(products)
   } catch (error: any) {

@@ -16,11 +16,13 @@ interface CustomerDetailsModalProps {
   customer: Customer
   companyId: string
   isStoreManager?: boolean
+  isVendedor?: boolean
   onClose: () => void
   onCustomerUpdated?: (updatedCustomer: Customer) => void
 }
 
-export function CustomerDetailsModal({ customer, companyId, isStoreManager = false, onClose, onCustomerUpdated }: CustomerDetailsModalProps) {
+export function CustomerDetailsModal({ customer, companyId, isStoreManager = false, isVendedor = false, onClose, onCustomerUpdated }: CustomerDetailsModalProps) {
+  const hideFinancialInfo = isStoreManager || isVendedor
   const router = useRouter()
   const [currentCustomer, setCurrentCustomer] = useState<Customer>(customer)
   const [movements, setMovements] = useState<Movement[]>([])
@@ -220,8 +222,8 @@ export function CustomerDetailsModal({ customer, companyId, isStoreManager = fal
             </Card>
           ) : (
             <>
-          {/* Resumen - Oculto para STORE_MANAGER */}
-          {summary && !isStoreManager && (
+          {/* Resumen - Oculto para STORE_MANAGER y VENDEDOR */}
+          {summary && !hideFinancialInfo && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               <Card className="bg-blue-50 border-blue-200">
                 <CardHeader className="pb-2">
@@ -297,8 +299,8 @@ export function CustomerDetailsModal({ customer, companyId, isStoreManager = fal
             </div>
           )}
 
-          {/* Lista de Movimientos - Oculto para STORE_MANAGER */}
-          {!isStoreManager && (
+          {/* Lista de Movimientos - Oculto para STORE_MANAGER y VENDEDOR */}
+          {!hideFinancialInfo && (
             <div>
               <h3 className="text-lg font-semibold mb-4">Historial de Ventas</h3>
             {movements.length === 0 ? (

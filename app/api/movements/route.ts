@@ -40,14 +40,37 @@ export async function GET(req: NextRequest) {
       }
     }
     
-    // Soporte para múltiples bodegas (nuevo) o una sola bodega (legacy)
-    if (warehouseIds) {
-      const ids = warehouseIds.split(",").filter(Boolean)
-      if (ids.length > 0) {
-        whereClause.warehouseId = { in: ids }
+    // Get user type to apply warehouse filtering for VENDEDOR
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { userType: true }
+    })
+
+    // For VENDEDOR, filter by assigned warehouses
+    if (user?.userType === "VENDEDOR") {
+      // Get assigned warehouses for this VENDEDOR
+      const assignedWarehouses = await prisma.warehouseAssignment.findMany({
+        where: { userId: session.user.id },
+        select: { warehouseId: true }
+      })
+
+      const assignedWarehouseIds = assignedWarehouses.map(wa => wa.warehouseId)
+
+      if (assignedWarehouseIds.length === 0) {
+        return NextResponse.json({ movements: [] })
       }
-    } else if (warehouseId) {
-      whereClause.warehouseId = warehouseId
+
+      whereClause.warehouseId = { in: assignedWarehouseIds }
+    } else {
+      // For MASTER and STORE_MANAGER, support existing warehouse filtering
+      if (warehouseIds) {
+        const ids = warehouseIds.split(",").filter(Boolean)
+        if (ids.length > 0) {
+          whereClause.warehouseId = { in: ids }
+        }
+      } else if (warehouseId) {
+        whereClause.warehouseId = warehouseId
+      }
     }
     
     if (productId) whereClause.productId = productId
@@ -64,7 +87,15 @@ export async function GET(req: NextRequest) {
       orderBy: { movementDate: "desc" }
     })
     
-    return NextResponse.json({ movements })
+    // For VENDEDOR, remove profit field from movements
+    const filteredMovements = user?.userType === "VENDEDOR" 
+      ? movements.map(m => {
+          const { profit, ...rest } = m
+          return rest
+        })
+      : movements
+    
+    return NextResponse.json({ movements: filteredMovements })
   } catch (error: any) {
     console.error("Error obteniendo movimientos:", error)
     return NextResponse.json(

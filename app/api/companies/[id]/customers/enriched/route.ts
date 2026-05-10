@@ -15,6 +15,14 @@ export async function GET(
 
     const companyId = params.id
 
+    // Get user type to determine if financial details should be hidden
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { userType: true }
+    })
+
+    const isVendedor = user?.userType === "VENDEDOR"
+
     // Obtener todos los clientes de la compañía
     const customers = await prisma.customer.findMany({
       where: {
@@ -25,6 +33,11 @@ export async function GET(
     // Enriquecer cada cliente con estadísticas
     const enrichedCustomers = await Promise.all(
       customers.map(async (customer) => {
+        // For VENDEDOR, don't fetch financial data - just return basic customer info
+        if (isVendedor) {
+          return customer
+        }
+
         // Obtener todos los movimientos de venta del cliente
         const movements = await prisma.movement.findMany({
           where: {
