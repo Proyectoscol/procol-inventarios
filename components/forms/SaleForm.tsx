@@ -89,6 +89,8 @@ export function SaleForm({ companyId, warehouses, customers: initialCustomers = 
   const [editingProductBackup, setEditingProductBackup] = useState<ProductSaleItem | null>(null)
   const [showProductSearch, setShowProductSearch] = useState(true)
   const [editingMixedField, setEditingMixedField] = useState<"cash" | "credit" | null>(null)
+  // "" means "Todas las bodegas" (default); a specific id restricts the product search to that warehouse
+  const [filterWarehouseId, setFilterWarehouseId] = useState<string>("")
   
   useEffect(() => {
     setCustomers(initialCustomers)
@@ -283,12 +285,9 @@ export function SaleForm({ companyId, warehouses, customers: initialCustomers = 
 
   const handleAddAnotherProduct = () => {
     setShowProductSearch(true)
-    // Enfocar el input después de un pequeño delay para que se renderice
     setTimeout(() => {
-      const input = document.querySelector('input[placeholder="Buscar por producto o bodega..."]') as HTMLInputElement
-      if (input) {
-        input.focus()
-      }
+      const input = document.querySelector('input[type="text"]') as HTMLInputElement
+      if (input) input.focus()
     }, 100)
   }
 
@@ -472,6 +471,22 @@ export function SaleForm({ companyId, warehouses, customers: initialCustomers = 
               + Crear Producto
             </Button>
           </div>
+
+          {/* Filtro de bodega */}
+          <div className="mb-2">
+            <Label className="text-xs text-muted-foreground mb-1 block">Filtrar por bodega</Label>
+            <select
+              className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+              value={filterWarehouseId}
+              onChange={(e) => setFilterWarehouseId(e.target.value)}
+            >
+              <option value="">Todas las bodegas</option>
+              {warehouses.map(w => (
+                <option key={w.id} value={w.id}>{w.name}</option>
+              ))}
+            </select>
+          </div>
+
           {showProductSearch && (
             <ProductSearchWithWarehouse
               companyId={companyId}
@@ -480,8 +495,8 @@ export function SaleForm({ companyId, warehouses, customers: initialCustomers = 
                 setQuickProductName(name)
                 setShowQuickProductCreation(true)
               }}
-              placeholder="Buscar por producto o bodega..."
               excludedProductIds={productItems.map(item => `${item.productId}-${item.warehouseId}`)}
+              warehouseId={filterWarehouseId || undefined}
             />
           )}
         </div>

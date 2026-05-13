@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { PlusCircle, X, Warehouse } from "lucide-react"
+import { PlusCircle, Warehouse } from "lucide-react"
 
 interface ProductWithWarehouse {
   id: string
@@ -25,15 +25,21 @@ interface ProductSearchWithWarehouseProps {
   placeholder?: string
   disabled?: boolean
   excludedProductIds?: string[] // Array de "productId-warehouseId" para excluir
+  /**
+   * Cuando se provee, muestra todos los productos con el stock de ESA bodega (sin duplicar por bodega).
+   * Cuando es undefined ("Todas las bodegas"), muestra cada producto por cada bodega en la que tiene stock.
+   */
+  warehouseId?: string
 }
 
 export function ProductSearchWithWarehouse({ 
   companyId, 
   onSelect, 
   onCreateNew, 
-  placeholder = "Buscar por producto o bodega...",
+  placeholder,
   disabled = false,
-  excludedProductIds = []
+  excludedProductIds = [],
+  warehouseId
 }: ProductSearchWithWarehouseProps) {
   const [search, setSearch] = useState("")
   const [allProducts, setAllProducts] = useState<ProductWithWarehouse[]>([])
@@ -42,14 +48,16 @@ export function ProductSearchWithWarehouse({
   const [showResults, setShowResults] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Función para recargar productos
+  const defaultPlaceholder = warehouseId
+    ? "Buscar producto..."
+    : "Buscar por producto o bodega..."
+
   const fetchAllProducts = async () => {
     setLoading(true)
     try {
       const res = await fetch(`/api/companies/${companyId}/products`)
       if (res.ok) {
         const data = await res.json()
-        // Ordenar alfabéticamente
         const sorted = data.sort((a: ProductWithWarehouse, b: ProductWithWarehouse) => 
           a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })
         )
@@ -63,47 +71,43 @@ export function ProductSearchWithWarehouse({
     }
   }
 
-  // Cargar todos los productos al montar el componente
   useEffect(() => {
     if (companyId) {
       fetchAllProducts()
     }
   }, [companyId])
 
-  // Filtrar productos localmente cuando el usuario escribe
   useEffect(() => {
-    if (search.trim().length === 0) {
+    const searchLower = search.trim().toLowerCase()
+    if (searchLower.length === 0) {
       setFilteredProducts(allProducts)
-    } else {
-      const searchLower = search.toLowerCase()
-      const filtered = allProducts.filter(product => {
-        // Buscar por nombre de producto
-        if (product.nameLower.includes(searchLower)) {
-          return true
-        }
-        // Buscar por nombre de bodega
-        return product.stock.some(s => 
+      return
+    }
+    const filtered = allProducts.filter(product => {
+      if (product.nameLower.includes(searchLower)) return true
+      // When showing all warehouses, also allow searching by warehouse name
+      if (!warehouseId) {
+        return product.stock.some(s =>
           s.warehouse.name.toLowerCase().includes(searchLower)
         )
-      })
-      setFilteredProducts(filtered)
-    }
-  }, [search, allProducts])
+      }
+      return false
+    })
+    setFilteredProducts(filtered)
+  }, [search, allProducts, warehouseId])
 
-  // Cerrar dropdown al hacer click fuera
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setShowResults(false)
       }
     }
-
     document.addEventListener("mousedown", handleClickOutside)
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
-  const handleSelect = (product: ProductWithWarehouse, warehouseId: string) => {
-    onSelect(product, warehouseId)
+  const handleSelect = (product: ProductWithWarehouse, selectedWarehouseId: string) => {
+    onSelect(product, selectedWarehouseId)
     setSearch("")
     setShowResults(false)
   }
@@ -122,88 +126,99 @@ export function ProductSearchWithWarehouse({
     }
   }
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    setSearch(value)
-    setShowResults(true)
-  }
+  // ── Render items ──────────────────────────────────────────────────────────
 
-  const handleInputFocus = () => {
-    setShowResults(true)
+  const renderItems = () => {
+    if (warehouseId) {
+      // MODO BODEGA ESPECÍFICA: un ítem por producto con el stock de esa bodega
+      return filteredProducts.map((product) => {
+        const productKey = `${product.id}-${warehouseId}`
+        if (excludedProductIds.includes(productKey)) return null
+
+        const stockItem = product.stock.find(s => s.warehouse.id === warehouseId)
+        const qty = stockItem?.quantity ?? 0
+        const noStock = qty === 0
+
+        return (
+          <button
+            key={product.id}
+            type="button"
+            className={`w-full text-left px-4 py-2 hover:bg-accent hover:text-accent-foreground transition-colors border-b last:border-b-0 ${noStock ? "opacity-50" : ""}`}
+            onClick={() => handleSelect(product, warehouseId)}
+          >
+            <div className="font-medium">{product.name}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              {noStock ? "Sin stock en esta bodega" : `Stock disponible: ${qty}`}
+            </div>
+          </button>
+        )
+      }).filter(Boolean)
+    }
+
+    // MODO TODAS LAS BODEGAS: un ítem por combinación producto-bodega (comportamiento original)
+    return filteredProducts.flatMap((product) => {
+      if (product.stock.length === 0) {
+        return (
+          <button
+            key={product.id}
+            type="button"
+            className="w-full text-left px-4 py-2 border-b last:border-b-0 opacity-50 cursor-not-allowed"
+            disabled
+          >
+            <div className="font-medium">{product.name}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">Sin stock disponible</div>
+          </button>
+        )
+      }
+
+      return product.stock.map((stockItem) => {
+        const productKey = `${product.id}-${stockItem.warehouse.id}`
+        if (excludedProductIds.includes(productKey)) return null
+
+        return (
+          <button
+            key={productKey}
+            type="button"
+            className="w-full text-left px-4 py-2 hover:bg-accent hover:text-accent-foreground transition-colors border-b last:border-b-0"
+            onClick={() => handleSelect(product, stockItem.warehouse.id)}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="font-medium">{product.name}</div>
+                <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                  <Warehouse className="h-3 w-3" />
+                  {stockItem.warehouse.name} • Stock: {stockItem.quantity}
+                </div>
+              </div>
+            </div>
+          </button>
+        )
+      }).filter(Boolean)
+    })
   }
 
   return (
     <div className="relative w-full" ref={containerRef}>
-      <div className="relative">
-        <Input
-          placeholder={placeholder}
-          value={search}
-          onChange={handleInputChange}
-          onFocus={handleInputFocus}
-          disabled={disabled}
-        />
-      </div>
-      
+      <Input
+        placeholder={placeholder ?? defaultPlaceholder}
+        value={search}
+        onChange={(e) => { setSearch(e.target.value); setShowResults(true) }}
+        onFocus={() => setShowResults(true)}
+        disabled={disabled}
+      />
+
       {showResults && (
         <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
           {loading && (
-            <div className="p-4 text-sm text-muted-foreground text-center">
-              Buscando...
-            </div>
+            <div className="p-4 text-sm text-muted-foreground text-center">Buscando...</div>
           )}
-          
+
           {!loading && filteredProducts.length > 0 && (
             <div className="max-h-60 overflow-auto">
-              {filteredProducts.map((product) => {
-                // Si el producto tiene stock en múltiples bodegas, mostrar cada una
-                if (product.stock.length > 0) {
-                  return product.stock.map((stockItem) => {
-                    const productKey = `${product.id}-${stockItem.warehouse.id}`
-                    const isExcluded = excludedProductIds.includes(productKey)
-                    
-                    if (isExcluded) {
-                      return null // No mostrar productos ya agregados
-                    }
-                    
-                    return (
-                    <button
-                      key={productKey}
-                      type="button"
-                      className="w-full text-left px-4 py-2 hover:bg-accent hover:text-accent-foreground transition-colors border-b last:border-b-0"
-                      onClick={() => handleSelect(product, stockItem.warehouse.id)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="font-medium">{product.name}</div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                            <Warehouse className="h-3 w-3" />
-                            {stockItem.warehouse.name} • Stock: {stockItem.quantity}
-                          </div>
-                        </div>
-                      </div>
-                    </button>
-                    )
-                  }).filter(Boolean) // Filtrar nulls
-                } else {
-                  // Producto sin stock en ninguna bodega
-                  return (
-                    <button
-                      key={product.id}
-                      type="button"
-                      className="w-full text-left px-4 py-2 hover:bg-accent hover:text-accent-foreground transition-colors border-b last:border-b-0 opacity-50"
-                      disabled
-                    >
-                      <div className="font-medium">{product.name}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">
-                        Sin stock disponible
-                      </div>
-                    </button>
-                  )
-                }
-              })}
+              {renderItems()}
             </div>
           )}
-          
+
           {!loading && filteredProducts.length === 0 && search.length >= 1 && (
             <div className="p-2">
               <Button

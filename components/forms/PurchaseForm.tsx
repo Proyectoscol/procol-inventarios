@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { CurrencyInput } from "@/components/shared/CurrencyInput"
-import { ProductSearch } from "./ProductSearch"
+import { ProductSearchWithWarehouse } from "./ProductSearchWithWarehouse"
 import { QuickProductCreationModal } from "@/components/modals/QuickProductCreationModal"
 import { Select } from "@/components/ui/select"
 import { toast } from "sonner"
@@ -139,9 +139,8 @@ export function PurchaseForm({ companyId, warehouses, preselectedProductId, pres
 
       <div>
         <Label>Producto *</Label>
-        <ProductSearch
+        <ProductSearchWithWarehouse
           companyId={companyId}
-          preselectedProductId={preselectedProductId}
           onSelect={(product) => {
             setSelectedProduct(product)
             setValue("productId", product.id, { shouldValidate: true })
@@ -150,6 +149,7 @@ export function PurchaseForm({ companyId, warehouses, preselectedProductId, pres
             setQuickProductName(name)
             setShowQuickProductCreation(true)
           }}
+          warehouseId={warehouseId || undefined}
         />
         {selectedProduct && (
           <div className="mt-2 p-2 bg-muted rounded-md text-sm">
