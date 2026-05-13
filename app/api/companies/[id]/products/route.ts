@@ -65,11 +65,12 @@ export async function GET(
         return NextResponse.json([])
       }
 
-      // Filter products to only show stock in assigned warehouses
-      // A product is included if it has stock in at least one assigned warehouse
-      products = products.filter(product => {
-        return product.stock.some(s => assignedWarehouseIds.includes(s.warehouseId))
-      })
+      // Devuelve todos los productos de la compañía, pero limita stock[]
+      // a las bodegas asignadas al vendedor (qty=0 aparece como "Sin stock" en el frontend)
+      products = products.map(product => ({
+        ...product,
+        stock: product.stock.filter(s => assignedWarehouseIds.includes(s.warehouseId))
+      }))
     }
 
     return NextResponse.json(products)
