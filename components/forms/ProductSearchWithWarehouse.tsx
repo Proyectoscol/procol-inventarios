@@ -169,12 +169,23 @@ export function ProductSearchWithWarehouse({
         ).values()]
 
     return filteredProducts.flatMap((product) => {
-      return warehouseList.map((wh) => {
+      // Construir entradas con su cantidad para poder ordenarlas
+      const entries = warehouseList.map((wh) => {
+        const stockItem = product.stock.find(s => s.warehouse.id === wh.id)
+        return { wh, qty: stockItem?.quantity ?? 0 }
+      })
+
+      // Orden: con stock desc, luego sin stock (estables entre sí)
+      const sorted = [...entries].sort((a, b) => {
+        if (a.qty > 0 && b.qty === 0) return -1
+        if (a.qty === 0 && b.qty > 0) return 1
+        return b.qty - a.qty
+      })
+
+      return sorted.map(({ wh, qty }) => {
         const productKey = `${product.id}-${wh.id}`
         if (excludedProductIds.includes(productKey)) return null
 
-        const stockItem = product.stock.find(s => s.warehouse.id === wh.id)
-        const qty = stockItem?.quantity ?? 0
         const noStock = qty === 0
 
         return (
