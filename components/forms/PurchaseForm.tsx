@@ -150,6 +150,7 @@ export function PurchaseForm({ companyId, warehouses, preselectedProductId, pres
             setShowQuickProductCreation(true)
           }}
           warehouseId={warehouseId || undefined}
+          warehouses={warehouses}
         />
         {selectedProduct && (
           <div className="mt-2 p-2 bg-muted rounded-md text-sm">

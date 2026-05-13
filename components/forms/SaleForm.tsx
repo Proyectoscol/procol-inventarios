@@ -497,6 +497,7 @@ export function SaleForm({ companyId, warehouses, customers: initialCustomers = 
               }}
               excludedProductIds={productItems.map(item => `${item.productId}-${item.warehouseId}`)}
               warehouseId={filterWarehouseId || undefined}
+              warehouses={warehouses}
             />
           )}
         </div>

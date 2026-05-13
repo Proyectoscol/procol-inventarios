@@ -27,9 +27,12 @@ interface ProductSearchWithWarehouseProps {
   excludedProductIds?: string[] // Array de "productId-warehouseId" para excluir
   /**
    * Cuando se provee, muestra todos los productos con el stock de ESA bodega (sin duplicar por bodega).
-   * Cuando es undefined ("Todas las bodegas"), muestra cada producto por cada bodega en la que tiene stock.
+   * Cuando es undefined ("Todas las bodegas"), muestra cada producto en TODAS las bodegas de la lista,
+   * aunque el stock sea 0.
    */
   warehouseId?: string
+  /** Lista completa de bodegas accesibles para el usuario. Necesaria en modo "Todas las bodegas". */
+  warehouses?: Array<{ id: string; name: string }>
 }
 
 export function ProductSearchWithWarehouse({ 
@@ -39,7 +42,8 @@ export function ProductSearchWithWarehouse({
   placeholder,
   disabled = false,
   excludedProductIds = [],
-  warehouseId
+  warehouseId,
+  warehouses = []
 }: ProductSearchWithWarehouseProps) {
   const [search, setSearch] = useState("")
   const [allProducts, setAllProducts] = useState<ProductWithWarehouse[]>([])
@@ -155,39 +159,37 @@ export function ProductSearchWithWarehouse({
       }).filter(Boolean)
     }
 
-    // MODO TODAS LAS BODEGAS: un ítem por combinación producto-bodega (comportamiento original)
-    return filteredProducts.flatMap((product) => {
-      if (product.stock.length === 0) {
-        return (
-          <button
-            key={product.id}
-            type="button"
-            className="w-full text-left px-4 py-2 border-b last:border-b-0 opacity-50 cursor-not-allowed"
-            disabled
-          >
-            <div className="font-medium">{product.name}</div>
-            <div className="text-xs text-muted-foreground mt-0.5">Sin stock disponible</div>
-          </button>
-        )
-      }
+    // MODO TODAS LAS BODEGAS: un ítem por cada bodega para cada producto.
+    // Si hay stock → normal. Si no hay stock → opaco pero clicable (para poder agregar).
+    // Si no tenemos la lista de bodegas, caemos al comportamiento anterior (solo stocks existentes).
+    const warehouseList = warehouses.length > 0
+      ? warehouses
+      : [...new Map(
+          filteredProducts.flatMap(p => p.stock.map(s => [s.warehouse.id, s.warehouse]))
+        ).values()]
 
-      return product.stock.map((stockItem) => {
-        const productKey = `${product.id}-${stockItem.warehouse.id}`
+    return filteredProducts.flatMap((product) => {
+      return warehouseList.map((wh) => {
+        const productKey = `${product.id}-${wh.id}`
         if (excludedProductIds.includes(productKey)) return null
+
+        const stockItem = product.stock.find(s => s.warehouse.id === wh.id)
+        const qty = stockItem?.quantity ?? 0
+        const noStock = qty === 0
 
         return (
           <button
             key={productKey}
             type="button"
-            className="w-full text-left px-4 py-2 hover:bg-accent hover:text-accent-foreground transition-colors border-b last:border-b-0"
-            onClick={() => handleSelect(product, stockItem.warehouse.id)}
+            className={`w-full text-left px-4 py-2 hover:bg-accent hover:text-accent-foreground transition-colors border-b last:border-b-0 ${noStock ? "opacity-50" : ""}`}
+            onClick={() => handleSelect(product, wh.id)}
           >
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <div className="font-medium">{product.name}</div>
                 <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                   <Warehouse className="h-3 w-3" />
-                  {stockItem.warehouse.name} • Stock: {stockItem.quantity}
+                  {wh.name} • {noStock ? "Sin stock" : `Stock: ${qty}`}
                 </div>
               </div>
             </div>
