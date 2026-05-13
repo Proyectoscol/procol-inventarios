@@ -20,7 +20,6 @@ type ProductFormData = {
   description?: string
   imageBase64?: string
   minStockThreshold: number
-  warehouseId?: string // Bodega seleccionada en paso 1
 }
 
 type PurchaseFormData = {
@@ -56,20 +55,14 @@ export function QuickProductCreationModal({
   const [createdProductId, setCreatedProductId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  // Schema extendido para incluir warehouseId
-  const productFormSchema = productSchema.extend({
-    warehouseId: z.string().min(1, "Debes seleccionar una bodega")
-  })
-
-  // Formulario de producto (Paso 1)
-  const productForm = useForm<ProductFormData & { warehouseId: string }>({
-    resolver: zodResolver(productFormSchema),
+  // Formulario de producto (Paso 1) – sin bodega, los productos son globales de la compañía
+  const productForm = useForm<ProductFormData>({
+    resolver: zodResolver(productSchema),
     defaultValues: {
       name: initialProductName,
       description: "",
       imageBase64: "",
       minStockThreshold: 0,
-      warehouseId: initialWarehouseId || ""
     }
   })
 
@@ -82,34 +75,16 @@ export function QuickProductCreationModal({
     }
   })
 
-  // Sincronizar warehouseId del paso 1 al paso 2 cuando se avanza
-  useEffect(() => {
-    if (step === 2 && createdProductId) {
-      const warehouseId = productForm.getValues("warehouseId")
-      if (warehouseId) {
-        purchaseForm.setValue("warehouseId", warehouseId)
-      }
-    }
-  }, [step, createdProductId, productForm, purchaseForm])
-
   const priceType = purchaseForm.watch("priceType")
   const quantity = purchaseForm.watch("quantity")
   const price = purchaseForm.watch("price")
 
   const unitPrice = priceType === "unit" ? price : (quantity > 0 ? price / quantity : 0)
 
-  // Paso 1: Crear producto
-  const onProductSubmit = async (data: ProductFormData & { warehouseId: string }) => {
-    // Validar que el nombre esté lleno
+  // Paso 1: Crear producto (sin bodega – los productos son globales de la compañía)
+  const onProductSubmit = async (data: ProductFormData) => {
     if (!data.name || data.name.trim().length === 0) {
       toast.error("❌ El nombre del producto es requerido")
-      return
-    }
-    
-    // Validar que la bodega esté seleccionada
-    if (!data.warehouseId || data.warehouseId.trim() === "") {
-      toast.error("❌ Debes seleccionar una bodega")
-      productForm.setError("warehouseId", { message: "Debes seleccionar una bodega" })
       return
     }
 
@@ -134,12 +109,14 @@ export function QuickProductCreationModal({
 
       const newProduct = await res.json()
       setCreatedProductId(newProduct.id)
-      
-      // Pre-seleccionar la bodega en el paso 2
-      purchaseForm.setValue("warehouseId", data.warehouseId)
-      
+
+      // Si hay bodega inicial pre-seleccionada, llevarla al paso 2
+      if (initialWarehouseId) {
+        purchaseForm.setValue("warehouseId", initialWarehouseId)
+      }
+
       toast.success("✅ Producto creado exitosamente", {
-        description: "Ahora registra la compra inicial para agregar stock",
+        description: "Ahora registra la compra inicial para agregar stock a la bodega",
         duration: 3000
       })
       setStep(2)
@@ -273,19 +250,9 @@ export function QuickProductCreationModal({
               }} 
               className="space-y-6"
             >
-              <div>
-                <Label className="text-base">Bodega *</Label>
-                <WarehouseSelector
-                  warehouses={warehouses}
-                  selectedWarehouseId={productForm.watch("warehouseId") || null}
-                  onSelect={(id) => productForm.setValue("warehouseId", id, { shouldValidate: true })}
-                  placeholder="Seleccionar..."
-                  required
-                />
-                {productForm.formState.errors.warehouseId && (
-                  <p className="text-base text-red-500 mt-1">{productForm.formState.errors.warehouseId?.message}</p>
-                )}
-              </div>
+              <p className="text-sm text-muted-foreground -mt-2">
+                El producto quedará disponible para todas las bodegas de la empresa. En el siguiente paso podrás agregarle inventario a una bodega específica.
+              </p>
 
               <div>
                 <Label htmlFor="name" className="text-base">Nombre del Producto *</Label>

@@ -184,7 +184,7 @@ export function SaleForm({ companyId, warehouses, customers: initialCustomers = 
     setShowProductCard(false)
     setSelectedProduct(null)
     setSelectedWarehouseId("")
-    setShowProductSearch(true) // Mantener búsqueda visible
+    setShowProductSearch(false) // Ocultar búsqueda; el botón "Añadir otro producto" la reabre
     // Limpiar estado de edición
     setEditingProductIndex(null)
     setEditingProductBackup(null)
@@ -472,19 +472,37 @@ export function SaleForm({ companyId, warehouses, customers: initialCustomers = 
             </Button>
           </div>
 
-          {/* Filtro de bodega */}
-          <div className="mb-2">
-            <Label className="text-xs text-muted-foreground mb-1 block">Filtrar por bodega</Label>
-            <select
-              className="w-full border rounded-md px-3 py-2 text-sm bg-background"
-              value={filterWarehouseId}
-              onChange={(e) => setFilterWarehouseId(e.target.value)}
-            >
-              <option value="">Todas las bodegas</option>
+          {/* Filtro de bodega – tags clicables */}
+          <div className="mb-3">
+            <Label className="text-xs text-muted-foreground mb-1.5 block">Bodega</Label>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setFilterWarehouseId("")}
+                className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-colors border ${
+                  filterWarehouseId === ""
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-muted text-muted-foreground border-muted-foreground/30 hover:bg-accent"
+                }`}
+              >
+                Todas las bodegas
+              </button>
               {warehouses.map(w => (
-                <option key={w.id} value={w.id}>{w.name}</option>
+                <button
+                  key={w.id}
+                  type="button"
+                  onClick={() => setFilterWarehouseId(w.id)}
+                  className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium transition-colors border ${
+                    filterWarehouseId === w.id
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                  }`}
+                >
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-5 0H3m2 0h4M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 8h8" /></svg>
+                  {w.name}
+                </button>
               ))}
-            </select>
+            </div>
           </div>
 
           {showProductSearch && (

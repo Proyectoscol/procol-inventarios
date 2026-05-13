@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { CurrencyInput } from "@/components/shared/CurrencyInput"
 import { ProductSearchWithWarehouse } from "./ProductSearchWithWarehouse"
 import { QuickProductCreationModal } from "@/components/modals/QuickProductCreationModal"
-import { Select } from "@/components/ui/select"
+import { Warehouse } from "lucide-react"
 import { toast } from "sonner"
 
 type PurchaseFormData = {
@@ -121,19 +121,26 @@ export function PurchaseForm({ companyId, warehouses, preselectedProductId, pres
     <>
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       <div>
-        <Label>Bodega *</Label>
-        <Select 
-          value={warehouseId || ""}
-          onChange={(e) => setValue("warehouseId", e.target.value, { shouldValidate: true })}
-          required
-        >
-          <option value="">Seleccionar...</option>
+        <Label className="text-xs text-muted-foreground mb-1.5 block">Bodega *</Label>
+        <div className="flex flex-wrap gap-2">
           {warehouses.map((w) => (
-            <option key={w.id} value={w.id}>{w.name}</option>
+            <button
+              key={w.id}
+              type="button"
+              onClick={() => setValue("warehouseId", w.id, { shouldValidate: true })}
+              className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium transition-colors border ${
+                warehouseId === w.id
+                  ? "bg-blue-600 text-white border-blue-600"
+                  : "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+              }`}
+            >
+              <Warehouse className="h-3 w-3" />
+              {w.name}
+            </button>
           ))}
-        </Select>
+        </div>
         {errors.warehouseId && (
-          <p className="text-sm text-red-500">{errors.warehouseId.message}</p>
+          <p className="text-sm text-red-500 mt-1">{errors.warehouseId.message}</p>
         )}
       </div>
 
