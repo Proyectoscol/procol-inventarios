@@ -254,6 +254,8 @@ model Movement {
   movementDate DateTime @default(now())
   /// Para ventas: reparto FIFO [{ "batchId": "...", "quantity": n }]. Permite revertir la venta correctamente.
   fifoBreakdown Json?
+  /// Para transferencias: bodega destino (solo cuando type = 'transfer')
+  targetWarehouseId String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

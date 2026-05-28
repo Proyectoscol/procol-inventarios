@@ -86,15 +86,33 @@ export async function GET(req: NextRequest) {
       },
       orderBy: { movementDate: "desc" }
     })
-    
+
+    // Enrich transfer movements with target warehouse info
+    const targetWarehouseIds = movements
+      .filter(m => m.type === "transfer" && m.targetWarehouseId)
+      .map(m => m.targetWarehouseId!)
+
+    let targetWarehouseMap: Record<string, any> = {}
+    if (targetWarehouseIds.length > 0) {
+      const targetWarehouses = await prisma.warehouse.findMany({
+        where: { id: { in: targetWarehouseIds } }
+      })
+      targetWarehouseMap = Object.fromEntries(targetWarehouses.map(w => [w.id, w]))
+    }
+
+    const enrichedMovements = movements.map(m => ({
+      ...m,
+      targetWarehouse: m.targetWarehouseId ? (targetWarehouseMap[m.targetWarehouseId] ?? null) : null
+    }))
+
     // For VENDEDOR, remove profit field from movements
-    const filteredMovements = user?.userType === "VENDEDOR" 
-      ? movements.map(m => {
+    const filteredMovements = user?.userType === "VENDEDOR"
+      ? enrichedMovements.map(m => {
           const { profit, ...rest } = m
           return rest
         })
-      : movements
-    
+      : enrichedMovements
+
     return NextResponse.json({ movements: filteredMovements })
   } catch (error: any) {
     console.error("Error obteniendo movimientos:", error)

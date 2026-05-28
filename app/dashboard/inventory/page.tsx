@@ -13,9 +13,10 @@ import { BackButton } from "@/components/shared/BackButton"
 import { EditProductModal } from "@/components/modals/EditProductModal"
 import { EditThresholdModal } from "@/components/modals/EditThresholdModal"
 import { ConfirmDialog } from "@/components/modals/ConfirmDialog"
-import { Edit, Package, Calendar, DollarSign, ShoppingCart, Trash2, FileDown } from "lucide-react"
+import { Edit, Package, Calendar, DollarSign, ShoppingCart, Trash2, FileDown, ArrowRightLeft } from "lucide-react"
 import { toast } from "sonner"
 import { useCompany } from "@/contexts/CompanyContext"
+import { TransferModal } from "@/components/modals/TransferModal"
 
 function InventoryPageContent() {
   const { data: session, status } = useSession()
@@ -38,6 +39,7 @@ function InventoryPageContent() {
   const [productToDelete, setProductToDelete] = useState<any>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [inventoryValue, setInventoryValue] = useState<number | null>(null)
+  const [transferProduct, setTransferProduct] = useState<any>(null)
   const [loadingInventoryValue, setLoadingInventoryValue] = useState(false)
   const isMountedRef = useRef(true)
 
@@ -308,6 +310,10 @@ function InventoryPageContent() {
   const handleAddStock = (product: any) => {
     // Redirigir a página de compra con producto y bodega pre-seleccionados
     router.push(`/dashboard/movements/purchase?productId=${product.id}&warehouseId=${selectedWarehouseId}`)
+  }
+
+  const handleTransferProduct = (product: any) => {
+    setTransferProduct(product)
   }
 
   const handleDeleteProduct = (product: any) => {
@@ -605,6 +611,17 @@ function InventoryPageContent() {
                             <ShoppingCart className="h-3 w-3 mr-1" />
                             Agregar
                           </Button>
+                          {stockQuantity > 0 && warehouses.length > 1 && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleTransferProduct(product)}
+                              className="h-6 px-2 text-xs text-blue-600 border-blue-300 hover:bg-blue-50"
+                            >
+                              <ArrowRightLeft className="h-3 w-3 mr-1" />
+                              Trasladar
+                            </Button>
+                          )}
                         </div>
                       </div>
                       
@@ -730,6 +747,31 @@ function InventoryPageContent() {
         />
       )}
       
+      {/* Modal de transferencia */}
+      {transferProduct && selectedWarehouseId && selectedCompanyId && (
+        <TransferModal
+          product={{ id: transferProduct.id, name: transferProduct.name }}
+          sourceWarehouse={
+            warehouses.find((w) => w.id === selectedWarehouseId) || {
+              id: selectedWarehouseId,
+              name: "Bodega actual"
+            }
+          }
+          sourceStock={
+            transferProduct.stock?.find((s: any) => s.warehouseId === selectedWarehouseId)
+              ?.quantity ?? transferProduct.currentStock ?? 0
+          }
+          warehouses={warehouses.map((w) => ({ id: w.id, name: w.name }))}
+          companyId={selectedCompanyId}
+          onSuccess={() => {
+            setTransferProduct(null)
+            fetchProducts(selectedCompanyId, selectedWarehouseId)
+            fetchInventoryValue(selectedWarehouseId)
+          }}
+          onClose={() => setTransferProduct(null)}
+        />
+      )}
+
       {/* Botón de atrás al final */}
       <div className="mt-8 flex justify-center">
         <BackButton href="/dashboard" />

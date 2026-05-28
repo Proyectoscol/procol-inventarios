@@ -75,9 +75,10 @@ export interface Customer {
 export interface Movement {
   id: string
   movementNumber: string
-  type: "purchase" | "sale"
+  type: "purchase" | "sale" | "transfer"
   productId: string
   warehouseId: string
+  targetWarehouseId?: string
   batchId?: string
   quantity: number
   unitPrice: number

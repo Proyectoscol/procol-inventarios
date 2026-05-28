@@ -9,17 +9,18 @@ import { LoadingSpinner } from "@/components/shared/LoadingSpinner"
 import { EditMovementModal } from "@/components/modals/EditMovementModal"
 import { DateRangeSelector } from "@/components/shared/DateRangeSelector"
 import { toast } from "sonner"
-import { 
-  ShoppingCart, 
-  Package, 
-  Edit, 
+import {
+  ShoppingCart,
+  Package,
+  Edit,
   FileText,
   TrendingUp,
   User as UserIcon,
   Warehouse,
   Calendar,
   RotateCcw,
-  Trash2
+  Trash2,
+  ArrowRightLeft
 } from "lucide-react"
 import { formatColombiaDate, formatColombiaTime } from "@/lib/date-utils"
 import { formatCurrency, cn } from "@/lib/utils"
@@ -264,6 +265,7 @@ export default function MovementsPage() {
 
   const purchases = movements.filter(m => m.type === "purchase")
   const sales = movements.filter(m => m.type === "sale")
+  const transfers = movements.filter(m => m.type === "transfer")
 
   return (
     <div className="p-8">
@@ -399,6 +401,19 @@ export default function MovementsPage() {
               </div>
             </CardContent>
           </Card>
+
+          <Card className="bg-blue-50 border-blue-200">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <ArrowRightLeft className="h-4 w-4 text-blue-600" /> Transferencias
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-700">
+                {transfers.length}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Lista de movimientos */}
@@ -418,28 +433,39 @@ export default function MovementsPage() {
               <div className="space-y-4">
                 {movements.map((movement) => {
                   const isSale = movement.type === "sale"
+                  const isTransfer = movement.type === "transfer"
+                  const borderColor = isSale
+                    ? "border-green-500"
+                    : isTransfer
+                    ? "border-blue-500"
+                    : "border-orange-500"
+
                   return (
-                    <Card 
+                    <Card
                       key={movement.id}
-                      className={`border-l-4 ${
-                        isSale ? "border-green-500" : "border-orange-500"
-                      }`}
+                      className={`border-l-4 ${borderColor}`}
                     >
                       <CardContent className="p-4">
                         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                           <div className="flex-1 space-y-2">
                             {/* Header con tipo y número */}
-                            <div className="flex items-center gap-2 mb-2">
+                            <div className="flex items-center gap-2 mb-2 flex-wrap">
                               <div className={`flex items-center gap-2 px-3 py-1 rounded-md ${
-                                isSale ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
+                                isSale
+                                  ? "bg-green-100 text-green-700"
+                                  : isTransfer
+                                  ? "bg-blue-100 text-blue-700"
+                                  : "bg-orange-100 text-orange-700"
                               }`}>
                                 {isSale ? (
                                   <ShoppingCart className="h-4 w-4" />
+                                ) : isTransfer ? (
+                                  <ArrowRightLeft className="h-4 w-4" />
                                 ) : (
                                   <Package className="h-4 w-4" />
                                 )}
                                 <span className="font-semibold text-sm">
-                                  {isSale ? "VENTA" : "COMPRA"}
+                                  {isSale ? "VENTA" : isTransfer ? "TRANSFERENCIA" : "COMPRA"}
                                 </span>
                               </div>
                               <span className="font-mono font-semibold text-lg">
@@ -456,22 +482,41 @@ export default function MovementsPage() {
                                 <span className="font-medium text-muted-foreground">Producto:</span>
                                 <p className="font-semibold">{movement.product?.name || "N/A"}</p>
                               </div>
-                              <div>
-                                <span className="font-medium text-muted-foreground">Bodega:</span>
-                                <p className="font-semibold">{movement.warehouse?.name || "N/A"}</p>
-                              </div>
+
+                              {isTransfer ? (
+                                <div className="md:col-span-2">
+                                  <span className="font-medium text-muted-foreground">Ruta:</span>
+                                  <p className="font-semibold flex items-center gap-1">
+                                    {movement.warehouse?.name || "N/A"}
+                                    <ArrowRightLeft className="h-3 w-3 text-blue-500 mx-1" />
+                                    {movement.targetWarehouse?.name || movement.targetWarehouseId || "N/A"}
+                                  </p>
+                                </div>
+                              ) : (
+                                <div>
+                                  <span className="font-medium text-muted-foreground">Bodega:</span>
+                                  <p className="font-semibold">{movement.warehouse?.name || "N/A"}</p>
+                                </div>
+                              )}
+
                               <div>
                                 <span className="font-medium text-muted-foreground">Cantidad:</span>
                                 <p className="font-semibold">{movement.quantity} unidades</p>
                               </div>
-                              <div>
-                                <span className="font-medium text-muted-foreground">Precio Unitario:</span>
-                                <p className="font-semibold">{formatCurrency(Number(movement.unitPrice))}</p>
-                              </div>
-                              <div>
-                                <span className="font-medium text-muted-foreground">Total:</span>
-                                <p className="font-semibold text-lg">{formatCurrency(Number(movement.totalAmount))}</p>
-                              </div>
+
+                              {!isTransfer && (
+                                <>
+                                  <div>
+                                    <span className="font-medium text-muted-foreground">Precio Unitario:</span>
+                                    <p className="font-semibold">{formatCurrency(Number(movement.unitPrice))}</p>
+                                  </div>
+                                  <div>
+                                    <span className="font-medium text-muted-foreground">Total:</span>
+                                    <p className="font-semibold text-lg">{formatCurrency(Number(movement.totalAmount))}</p>
+                                  </div>
+                                </>
+                              )}
+
                               {isSale && movement.profit !== null && !isVendedor && (
                                 <div>
                                   <span className="font-medium text-muted-foreground flex items-center gap-1">
@@ -490,43 +535,25 @@ export default function MovementsPage() {
                                   <p className="font-semibold">{movement.customer.name}</p>
                                 </div>
                               )}
+                              {movement.notes && (
+                                <div className="md:col-span-2">
+                                  <span className="font-medium text-muted-foreground">Notas:</span>
+                                  <p className="text-sm">{movement.notes}</p>
+                                </div>
+                              )}
                             </div>
                           </div>
 
                           {/* Botones de acción */}
                           <div className="flex flex-col gap-2 md:min-w-[200px]">
-                            {isVendedor ? (
-                              /* VENDEDOR: Solo puede ver PDF y guía, no editar ni eliminar */
-                              <>
-                                <div className="flex items-center gap-1 px-2 py-1 bg-gray-50 border border-gray-200 rounded text-xs text-gray-500">
-                                  <span>Solo lectura</span>
+                            {isVendedor || isTransfer ? (
+                              <div className="flex items-center gap-1 px-2 py-1 bg-gray-50 border border-gray-200 rounded text-xs text-gray-500">
+                                <span>{isTransfer ? "Transferencia interna" : "Solo lectura"}</span>
+                                {!isTransfer && (
                                   <span className="ml-auto cursor-help" title="Contacta al administrador para modificar o eliminar movimientos">ⓘ</span>
-                                </div>
-                                {isSale && (
-                                  <>
-                                    <Button
-                                      onClick={() => handleViewPDF(movement.id)}
-                                      variant="outline"
-                                      size="sm"
-                                      className="w-full"
-                                    >
-                                      <FileText className="h-4 w-4 mr-2" />
-                                      Ver PDF
-                                    </Button>
-                                    <Button
-                                      onClick={() => handleViewShippingLabel(movement.id)}
-                                      variant="outline"
-                                      size="sm"
-                                      className="w-full bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-700"
-                                    >
-                                      <Package className="h-4 w-4 mr-2" />
-                                      Ver Guía de Envío
-                                    </Button>
-                                  </>
                                 )}
-                              </>
+                              </div>
                             ) : (
-                              /* MASTER / otros: Pueden editar y eliminar */
                               <>
                                 <Button
                                   onClick={() => setSelectedMovement(movement)}
@@ -546,28 +573,50 @@ export default function MovementsPage() {
                                   <Trash2 className="h-4 w-4 mr-2" />
                                   Eliminar
                                 </Button>
-                                {isSale && (
-                                  <>
-                                    <Button
-                                      onClick={() => handleViewPDF(movement.id)}
-                                      variant="outline"
-                                      size="sm"
-                                      className="w-full"
-                                    >
-                                      <FileText className="h-4 w-4 mr-2" />
-                                      Ver PDF
-                                    </Button>
-                                    <Button
-                                      onClick={() => handleViewShippingLabel(movement.id)}
-                                      variant="outline"
-                                      size="sm"
-                                      className="w-full bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-700"
-                                    >
-                                      <Package className="h-4 w-4 mr-2" />
-                                      Ver Guía de Envío
-                                    </Button>
-                                  </>
-                                )}
+                              </>
+                            )}
+                            {isSale && !isVendedor && (
+                              <>
+                                <Button
+                                  onClick={() => handleViewPDF(movement.id)}
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full"
+                                >
+                                  <FileText className="h-4 w-4 mr-2" />
+                                  Ver PDF
+                                </Button>
+                                <Button
+                                  onClick={() => handleViewShippingLabel(movement.id)}
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-700"
+                                >
+                                  <Package className="h-4 w-4 mr-2" />
+                                  Ver Guía de Envío
+                                </Button>
+                              </>
+                            )}
+                            {isSale && isVendedor && (
+                              <>
+                                <Button
+                                  onClick={() => handleViewPDF(movement.id)}
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full"
+                                >
+                                  <FileText className="h-4 w-4 mr-2" />
+                                  Ver PDF
+                                </Button>
+                                <Button
+                                  onClick={() => handleViewShippingLabel(movement.id)}
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-700"
+                                >
+                                  <Package className="h-4 w-4 mr-2" />
+                                  Ver Guía de Envío
+                                </Button>
                               </>
                             )}
                           </div>
